@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#fd358a" />
+  <meta name="description" content="Seguí tus hábitos con intención" />
+  <title>Habit Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── TOKENS ─────────────────────────────────── */
+    :root {
+      /* Base palette */
+      --pink:       #fd358a;   /* magenta principal */
+      --green:      #027d27;   /* verde principal    */
+      --red:        #cc3333;   /* rojo principal     */
+      /* Complementarios calculados */
+      --teal:       #02547d;   /* complementario del verde  */
+      --violet:     #7d02fd;   /* complementario del magenta */
+      --orange:     #fd7c02;   /* complementario del rojo   */
+      /* Tints & shades */
+      --pink-light: #ffe0ef;
+      --pink-dark:  #b8005e;
+      --green-light:#d4f5dc;
+      --green-dark: #015019;
+      --teal-light: #ceeaf7;
+      /* Neutrals */
+      --ink:        #120818;
+      --mid:        #4a3050;
+      --subtle:     #9b85a8;
+      --sand:       #ede8f2;
+      --parchment:  #f5f0f9;
+      --cream:      #fdf9ff;
+      /* Semantic aliases (keep old var names so nothing breaks) */
+      --forest:     var(--pink);
+      --moss:       var(--pink-dark);
+      --sage:       #f07ab5;
+      --mist:       var(--pink-light);
+      --amber:      var(--orange);
+      --rust:       var(--red);
+      --sky:        var(--teal);
+      --lavender:   var(--violet);
+      --r:          12px;
+      --r-lg:       20px;
+      --shadow:     0 4px 24px rgba(253,53,138,.12);
+      --shadow-lg:  0 8px 40px rgba(253,53,138,.20);
+      --trans:      .25s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ─── RESET ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── NOISE TEXTURE OVERLAY ──────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* ─── SCROLLBAR ──────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--parchment); }
+    ::-webkit-scrollbar-thumb { background: var(--pink); border-radius: 3px; }
+
+    /* ─── HEADER ─────────────────────────────────── */
+    header {
+      background: var(--forest);
+      color: var(--cream);
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+    .header-brand svg { width: 28px; height: 28px; }
+    .brand-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem; font-style: italic;
+      letter-spacing: .02em;
+    }
+    .header-date {
+      font-size: .8rem; color: var(--mist);
+      font-weight: 300; text-align: right;
+    }
+
+    /* ─── BOTTOM NAV ─────────────────────────────── */
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--cream);
+      border-top: 1px solid var(--sand);
+      display: flex; z-index: 100;
+      box-shadow: 0 -4px 20px rgba(26,46,36,.08);
+    }
+    .nav-btn {
+      flex: 1; padding: 10px 0; border: none; background: none;
+      cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      font-family: 'DM Sans', sans-serif; font-size: .65rem;
+      font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--moss); opacity: .45;
+      transition: opacity var(--trans), color var(--trans);
+    }
+    .nav-btn.active { opacity: 1; color: var(--forest); }
+    .nav-btn svg { width: 22px; height: 22px; }
+    .nav-btn span { margin-top: 1px; }
+
+    /* ─── MAIN CONTENT ───────────────────────────── */
+    main { padding: 20px 16px 100px; max-width: 480px; margin: 0 auto; }
+
+    /* ─── VIEWS ──────────────────────────────────── */
+    .view { display: none; animation: fadeUp .35s ease; }
+    .view.active { display: block; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── PAGE TITLES ────────────────────────────── */
+    .page-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.8rem; color: var(--forest);
+      margin-bottom: 4px;
+    }
+    .page-sub {
+      font-size: .85rem; color: var(--moss);
+      font-weight: 300; margin-bottom: 20px;
+    }
+
+    /* ─── MOTIVATIONAL BANNER ────────────────────── */
+    .motivation-banner {
+      background: linear-gradient(135deg, var(--pink), var(--violet));
+      color: var(--cream);
+      border-radius: var(--r-lg);
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      position: relative; overflow: hidden;
+    }
+    .motivation-banner::after {
+      content: ''; position: absolute;
+      width: 120px; height: 120px;
+      background: rgba(255,255,255,.06);
+      border-radius: 50%; right: -30px; top: -30px;
+    }
+    .motivation-banner p {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic; font-size: 1rem;
+      line-height: 1.5; position: relative;
+    }
+    .motivation-banner small {
+      display: block; margin-top: 6px;
+      font-size: .72rem; opacity: .7;
+      letter-spacing: .06em; text-transform: uppercase;
+    }
+
+    /* ─── CARDS ──────────────────────────────────── */
+    .card {
+      background: white;
+      border-radius: var(--r-lg);
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(200,220,200,.3);
+      transition: transform var(--trans), box-shadow var(--trans);
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+    /* ─── HABIT CARD (TODAY) ─────────────────────── */
+    .habit-card-today {
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .habit-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .habit-info { flex: 1; min-width: 0; }
+    .habit-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1rem; color: var(--ink);
+      margin-bottom: 2px;
+    }
+    .habit-desc {
+      font-size: .78rem; color: var(--moss);
+      font-weight: 300; margin-bottom: 8px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .habit-measure {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .measure-btn {
+      width: 28px; height: 28px;
+      border-radius: 50%; border: 1.5px solid var(--mist);
+      background: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: var(--moss);
+      transition: all var(--trans);
+    }
+    .measure-btn:hover { background: var(--mist); }
+    .measure-value {
+      font-size: .85rem; font-weight: 700;
+      color: var(--forest); min-width: 60px; text-align: center;
+    }
+    .check-btn {
+      width: 44px; height: 44px;
+      border-radius: 50%; border: 2px solid var(--mist);
+      background: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--trans); flex-shrink: 0;
+    }
+    .check-btn.done {
+      background: var(--green); border-color: var(--green);
+    }
+    .check-btn svg { width: 20px; height: 20px; color: var(--mist); }
+    .check-btn.done svg { color: white; }
+
+    /* ─── STREAK BADGE ───────────────────────────── */
+    .streak-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--sand); border-radius: 20px;
+      padding: 2px 8px; font-size: .72rem;
+      color: var(--amber); font-weight: 700;
+    }
+
+    /* ─── PROGRESS RING ──────────────────────────── */
+    .progress-summary {
+      display: flex; align-items: center; justify-content: space-between;
+      background: white; border-radius: var(--r-lg);
+      padding: 16px 20px; margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .progress-ring-wrap { position: relative; width: 64px; height: 64px; }
+    .progress-ring { transform: rotate(-90deg); }
+    .progress-ring-bg { fill: none; stroke: var(--mist); stroke-width: 5; }
+    .progress-ring-fill {
+      fill: none; stroke: var(--green); stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 175;
+      transition: stroke-dashoffset 1s cubic-bezier(.4,0,.2,1);
+    }
+    .progress-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .85rem; color: var(--forest);
+    }
+    .progress-text h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem; color: var(--forest);
+    }
+    .progress-text p { font-size: .8rem; color: var(--moss); font-weight: 300; }
+
+    /* ─── SECTION LABEL ──────────────────────────── */
+    .section-label {
+      font-size: .7rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--sage); margin: 20px 0 10px;
+    }
+
+    /* ─── FAB ────────────────────────────────────── */
+    .fab {
+      position: fixed; bottom: 80px; right: 20px;
+      width: 52px; height: 52px;
+      background: var(--forest); color: white;
+      border: none; border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(45,74,62,.4);
+      cursor: pointer; font-size: 1.6rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform var(--trans), box-shadow var(--trans);
+      z-index: 99;
+    }
+    .fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(45,74,62,.5); }
+
+    /* ─── MODAL ──────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(26,46,36,.5); z-index: 200;
+      align-items: flex-end; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--cream);
+      border-radius: 24px 24px 0 0;
+      padding: 24px 20px 40px;
+      width: 100%; max-width: 480px;
+      max-height: 85vh; overflow-y: auto;
+      animation: slideUp .3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: var(--sand); border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    .modal-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.4rem; color: var(--forest);
+      margin-bottom: 20px;
+    }
+
+    /* ─── FORM ───────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block; font-size: .75rem;
+      font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--moss);
+      margin-bottom: 6px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid var(--sand);
+      border-radius: var(--r);
+      background: white; color: var(--ink);
+      font-family: 'DM Sans', sans-serif; font-size: .9rem;
+      transition: border-color var(--trans);
+      outline: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--moss);
+    }
+    .form-textarea { resize: vertical; min-height: 72px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* EMOJI PICKER */
+    .emoji-picker {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 10px; background: white;
+      border: 1.5px solid var(--sand); border-radius: var(--r);
+    }
+    .emoji-opt {
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 1.5px solid transparent; background: var(--parchment);
+      cursor: pointer; font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--trans);
+    }
+    .emoji-opt:hover, .emoji-opt.selected {
+      border-color: var(--moss); background: var(--mist);
+    }
+
+    /* COLOR PICKER */
+    .color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+    .color-opt {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid transparent; cursor: pointer;
+      transition: transform var(--trans), border-color var(--trans);
+    }
+    .color-opt:hover, .color-opt.selected {
+      transform: scale(1.2); border-color: var(--ink);
+    }
+
+    /* ─── BUTTONS ────────────────────────────────── */
+    .btn {
+      width: 100%; padding: 14px;
+      border: none; border-radius: var(--r);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem; font-weight: 700;
+      letter-spacing: .04em; cursor: pointer;
+      transition: all var(--trans);
+    }
+    .btn-primary {
+      background: var(--forest); color: white;
+    }
+    .btn-primary:hover { background: var(--ink); }
+    .btn-secondary {
+      background: var(--sand); color: var(--forest);
+      margin-top: 8px;
+    }
+    .btn-danger {
+      background: #fde8e8; color: var(--rust);
+      margin-top: 8px;
+    }
+
+    /* ─── HABITS LIST (MANAGEMENT) ───────────────── */
+    .habit-manage-card {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .habit-manage-info { flex: 1; min-width: 0; }
+    .habit-manage-actions { display: flex; gap: 6px; }
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid var(--sand); background: none;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; color: var(--moss);
+      transition: all var(--trans);
+    }
+    .icon-btn:hover { background: var(--parchment); }
+    .icon-btn.delete:hover { background: #fde8e8; color: var(--rust); }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    /* ─── CALENDAR ───────────────────────────────── */
+    .calendar-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .calendar-month {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.2rem; color: var(--forest);
+    }
+    .cal-nav {
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid var(--sand); background: white;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; color: var(--moss);
+      transition: all var(--trans);
+    }
+    .cal-nav:hover { background: var(--parchment); }
+    .cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 4px; margin-bottom: 16px;
+    }
+    .cal-dow {
+      text-align: center; font-size: .65rem;
+      font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--sage);
+      padding: 4px 0;
+    }
+    .cal-day {
+      aspect-ratio: 1; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; cursor: pointer; position: relative;
+      transition: all var(--trans);
+    }
+    .cal-day:hover { background: var(--parchment); }
+    .cal-day.today { font-weight: 700; color: var(--forest); }
+    .cal-day.today::after {
+      content: ''; position: absolute;
+      bottom: 4px; left: 50%; transform: translateX(-50%);
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--pink);
+    }
+    .cal-day .dot-row {
+      position: absolute; bottom: 2px; left: 0; right: 0;
+      display: flex; justify-content: center; gap: 2px;
+    }
+    .cal-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+    }
+    .cal-day.empty { cursor: default; }
+
+    /* HABIT CALENDAR LEGEND */
+    .cal-habit-selector {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .cal-habit-chip {
+      padding: 4px 12px; border-radius: 20px;
+      font-size: .75rem; font-weight: 700;
+      cursor: pointer; border: 1.5px solid transparent;
+      transition: all var(--trans);
+    }
+    .cal-habit-chip.selected { border-color: currentColor; }
+
+    /* Calendar detail day */
+    .cal-day-detail {
+      background: white; border-radius: var(--r);
+      padding: 14px; margin-top: 10px;
+      box-shadow: var(--shadow);
+      font-size: .85rem; color: var(--moss);
+    }
+    .cal-day-detail h4 {
+      font-family: 'DM Serif Display', serif;
+      color: var(--forest); margin-bottom: 8px;
+    }
+
+    /* ─── REMINDER TOAST ─────────────────────────── */
+    .toast-container {
+      position: fixed; top: 70px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 300; width: calc(100% - 32px); max-width: 440px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--forest); color: var(--cream);
+      border-radius: var(--r); padding: 12px 16px;
+      margin-bottom: 8px;
+      display: flex; align-items: flex-start; gap: 10px;
+      box-shadow: var(--shadow-lg);
+      animation: toastIn .4s cubic-bezier(.4,0,.2,1);
+      pointer-events: all;
+    }
+    .toast.support { background: var(--forest); }
+    .proverb-toast { flex-direction: column; padding: 14px 16px; }
+    .proverb-toast .toast-close { align-self: flex-start; }
+    .toast-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+    .toast-body { flex: 1; }
+    .toast-title { font-weight: 700; font-size: .85rem; margin-bottom: 2px; }
+    .toast-msg { font-size: .78rem; opacity: .85; line-height: 1.4; }
+    .toast-close {
+      background: none; border: none; color: inherit;
+      opacity: .6; cursor: pointer; font-size: 1rem;
+      padding: 0 0 0 8px;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── EMPTY STATE ────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--sage);
+    }
+    .empty-state svg { width: 64px; height: 64px; opacity: .4; margin-bottom: 12px; }
+    .empty-state p { font-family: 'Playfair Display', serif; font-style: italic; }
+
+    /* ─── STAT GRID ──────────────────────────────── */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .stat-card { background: white; border-radius: var(--r); padding: 14px; box-shadow: var(--shadow); border-left: 3px solid var(--green); }
+    .stat-card.amber { border-left-color: var(--orange); }
+    .stat-card.sky   { border-left-color: var(--teal); }
+    .stat-card.rust  { border-left-color: var(--pink); }
+    .stat-num {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem; color: var(--forest);
+    }
+    .stat-label { font-size: .72rem; color: var(--moss); font-weight: 300; }
+
+    /* ─── SCROLLABLE HABIT SELECT ────────────────── */
+    #calHabitSelect {
+      display: flex; overflow-x: auto; gap: 8px;
+      padding-bottom: 4px; scrollbar-width: none;
+    }
+    #calHabitSelect::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-brand">
+    <svg viewBox="0 0 28 28" fill="none">
+      <rect x="3" y="3" width="22" height="22" rx="6" fill="#fd358a"/>
+      <path d="M9 14l3.5 3.5L20 10" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="brand-name">Habit Tracker</span>
+  </div>
+  <div class="header-date" id="headerDate"></div>
+</header>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- FAB -->
+<button class="fab" onclick="openAddHabit()" title="Agregar hábito" id="fab">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+</button>
+
+<!-- MAIN -->
+<main>
+
+  <!-- ═══ HOY ══════════════════════════════════════ -->
+  <section class="view active" id="view-today">
+    <h1 class="page-title">Buenos días 🌿</h1>
+    <p class="page-sub" id="todaySubtitle">Tus hábitos de hoy</p>
+
+    <div class="motivation-banner" id="motivationBanner">
+      <p id="motivationText"></p>
+      <p id="motivationEn" style="font-family:'DM Sans',sans-serif;font-size:.82rem;opacity:.85;margin-top:8px;font-style:italic"></p>
+      <p id="motivationExpl" style="font-family:'DM Sans',sans-serif;font-size:.75rem;opacity:.65;margin-top:6px;font-weight:300;line-height:1.5"></p>
+      <small>🀄 Proverbio chino del día</small>
+    </div>
+
+    <div class="progress-summary">
+      <div>
+        <div class="progress-text">
+          <h3 id="progressTitle">0 de 0 completados</h3>
+          <p>hábitos del día</p>
+        </div>
+      </div>
+      <div class="progress-ring-wrap">
+        <svg class="progress-ring" width="64" height="64" viewBox="0 0 64 64">
+          <circle class="progress-ring-bg" cx="32" cy="32" r="28"/>
+          <circle class="progress-ring-fill" id="progressRing" cx="32" cy="32" r="28"
+            stroke-dashoffset="175"/>
+        </svg>
+        <div class="progress-center" id="progressPct">0%</div>
+      </div>
+    </div>
+
+    <div class="section-label">Pendientes</div>
+    <div id="todayPending"></div>
+
+    <div class="section-label" id="doneLabel" style="display:none">Completados ✓</div>
+    <div id="todayDone"></div>
+  </section>
+
+  <!-- ═══ HÁBITOS ═══════════════════════════════════ -->
+  <section class="view" id="view-habits">
+    <h1 class="page-title">Mis Hábitos</h1>
+    <p class="page-sub">Gestioná tus hábitos</p>
+    <div id="habitsList"></div>
+    <div class="empty-state" id="habitsEmpty" style="display:none">
+      <svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2"/><path d="M32 20v12l8 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <p>Todavía no tenés hábitos.<br>¡Creá tu primero!</p>
+    </div>
+  </section>
+
+  <!-- ═══ CALENDARIO ════════════════════════════════ -->
+  <section class="view" id="view-calendar">
+    <h1 class="page-title">Calendario</h1>
+    <p class="page-sub">Tu progreso en el tiempo</p>
+
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Hábitos activos</div></div>
+      <div class="stat-card amber"><div class="stat-num" id="statStreak">0</div><div class="stat-label">Racha más larga 🔥</div></div>
+      <div class="stat-card sky"><div class="stat-num" id="statMonth">0%</div><div class="stat-label">Cumplimiento mes</div></div>
+      <div class="stat-card rust"><div class="stat-num" id="statToday">0</div><div class="stat-label">Completados hoy</div></div>
+    </div>
+
+    <div class="card">
+      <div class="calendar-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="calendar-month" id="calMonthLabel"></span>
+        <button class="cal-nav" onclick="changeMonth(1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
+      <div id="calHabitSelect" class="cal-habit-selector"></div>
+
+      <div class="cal-grid" id="calGrid"></div>
+      <div id="calDayDetail" class="cal-day-detail" style="display:none"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav>
+  <button class="nav-btn active" onclick="switchView('today', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+    <span>Hoy</span>
+  </button>
+  <button class="nav-btn" onclick="switchView('habits', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    <span>Hábitos</span>
+  </button>
+  <button class="nav-btn" onclick="switchView('calendar', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Calendario</span>
+  </button>
+</nav>
+
+<!-- ═══ MODAL: CREAR / EDITAR HÁBITO ═══════════════ -->
+<div class="modal-overlay" id="habitModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title" id="modalTitle">Nuevo Hábito</h2>
+
+    <div class="form-group">
+      <label class="form-label">Nombre del hábito</label>
+      <input class="form-input" id="hName" placeholder="Ej: Meditar 10 minutos" maxlength="40" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción (opcional)</label>
+      <textarea class="form-textarea" id="hDesc" placeholder="¿Por qué querés este hábito?"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tipo de medición</label>
+        <select class="form-select" id="hType" onchange="updateUnit()">
+          <option value="check">✓ Sí / No</option>
+          <option value="minutes">⏱ Minutos</option>
+          <option value="hours">🕐 Horas</option>
+          <option value="km">📍 Kilómetros</option>
+          <option value="reps">💪 Repeticiones</option>
+          <option value="glasses">💧 Vasos de agua</option>
+          <option value="pages">📖 Páginas</option>
+          <option value="custom">📐 Personalizado</option>
+        </select>
+      </div>
+      <div class="form-group" id="goalGroup">
+        <label class="form-label">Meta diaria</label>
+        <input class="form-input" id="hGoal" type="number" min="1" placeholder="Ej: 30" />
+      </div>
+    </div>
+    <div class="form-group" id="customUnitGroup" style="display:none">
+      <label class="form-label">Nombre de la unidad</label>
+      <input class="form-input" id="hCustomUnit" placeholder="Ej: páginas, vasos..." />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Ícono</label>
+      <div class="emoji-picker" id="emojiPicker">
+        🌿🏃‍♂️📚💧🧘‍♀️💪🎯🌅✍️🎨🎵🥗😴🚴‍♀️🧠💊🌍🐾🫁🫀
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Color</label>
+      <div class="color-picker" id="colorPicker"></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveHabit()">Guardar hábito</button>
+    <button class="btn btn-secondary" onclick="closeModal('habitModal')">Cancelar</button>
+    <button class="btn btn-danger" id="deleteBtn" style="display:none" onclick="deleteHabit()">Eliminar hábito</button>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   DATA LAYER (localStorage)
+   ════════════════════════════════════════════════════ */
+const COLORS = ['#fd358a','#027d27','#cc3333','#7d02fd','#02547d','#fd7c02','#b8005e','#015019'];
+
+/* ─── CHINESE PROVERBS ────────────────────────────────────
+   Each entry: { zh, pinyin, en, explanation }
+   Used for the daily banner (MOTIVATIONS) and support toasts (SUPPORT)
+   ─────────────────────────────────────────────────────── */
+const PROVERBS = [
+  {
+    zh: "冰冻三尺，非一日之寒。",
+    pinyin: "Bīngdòng sān chǐ, fēi yīrì zhī hán.",
+    en: "It takes more than one cold day for a river to freeze a meter deep.",
+    explanation: "Rome wasn't built in a day. Each habit you build is a layer of ice—keep showing up."
+  },
+  {
+    zh: "千里之行，始于足下。",
+    pinyin: "Qiānlǐ zhī xíng, shǐyú zúxià.",
+    en: "A thousand-li journey starts with a single footfall.",
+    explanation: "Every great transformation begins with one small step. Today's habit is that step."
+  },
+  {
+    zh: "水滴石穿，绳锯木断。",
+    pinyin: "Shuǐ dī shí chuān, shéng jù mù duàn.",
+    en: "Water drops pierce stone; rope saws cut wood.",
+    explanation: "Persistence beats force. Consistency—not intensity—is what transforms a habit."
+  },
+  {
+    zh: "失败是成功之母。",
+    pinyin: "Shībài shì chénggōng zhī mǔ.",
+    en: "Failure is the mother of success.",
+    explanation: "Missed a day? That's not failure—it's information. Learn, adjust, and keep going."
+  },
+  {
+    zh: "只要功夫深，铁杵磨成针。",
+    pinyin: "Zhǐyào gōngfū shēn, tiěchǔ móchéng zhēn.",
+    en: "With enough effort, an iron rod can be ground into a needle.",
+    explanation: "No goal is too ambitious if you commit to steady, daily effort."
+  },
+  {
+    zh: "吃得苦中苦，方为人上人。",
+    pinyin: "Chī dé kǔzhōngkǔ, fāng wéi rénshàngrén.",
+    en: "Endure the hardest hardships, and you will rise above others.",
+    explanation: "No pain, no gain. The discomfort of discipline today is the reward of tomorrow."
+  },
+  {
+    zh: "一日之计在于晨。",
+    pinyin: "Yīrì zhī jì zàiyú chén.",
+    en: "A day's planning is best done at dawn.",
+    explanation: "How you start your morning shapes your entire day. Win the morning, win the day."
+  },
+  {
+    zh: "守得云开见月明。",
+    pinyin: "Shǒu dé yún kāi jiàn yuèmíng.",
+    en: "Watch till the clouds part to see the moonlight.",
+    explanation: "Every cloud has a silver lining. Stay patient—your consistency will pay off."
+  },
+  {
+    zh: "老骥伏枥，志在千里。",
+    pinyin: "Lǎojì fúlì, zhì zài qiānlǐ.",
+    en: "An old warhorse in the stable still longs to gallop a thousand li.",
+    explanation: "It's never too late to pursue your goals. Ambition has no expiration date."
+  },
+  {
+    zh: "不能一口吃成胖子。",
+    pinyin: "Bùnéng yīkǒu chī chéng pàngzi.",
+    en: "You can't get fat with one mouthful.",
+    explanation: "Big changes happen gradually. Don't rush—trust the process and keep at it."
+  },
+  {
+    zh: "吃一堑，长一智。",
+    pinyin: "Chī yīqiàn, zhǎng yízhì.",
+    en: "A fall in a pit, a gain in your wit.",
+    explanation: "Every setback is a lesson in disguise. What did you learn today that makes you stronger?"
+  },
+  {
+    zh: "活到老，学到老。",
+    pinyin: "Huó dào lǎo, xué dào lǎo.",
+    en: "Live till you're old, and study till you're old.",
+    explanation: "Growth never stops. Every habit you build is an investment in your lifelong learning."
+  },
+  {
+    zh: "大智若愚。",
+    pinyin: "Dàzhì ruò yú.",
+    en: "Great wisdom can seem foolish.",
+    explanation: "Simple habits—done quietly and consistently—are the mark of a truly disciplined mind."
+  },
+  {
+    zh: "否极泰来。",
+    pinyin: "Pǐ jí tài lái.",
+    en: "After extreme hardship, peace arrives.",
+    explanation: "All difficult streaks end. Keep going—the breakthrough is closer than you think."
+  },
+  {
+    zh: "身体力行。",
+    pinyin: "Shēn tǐlì xíng.",
+    en: "A body acts according to its strength.",
+    explanation: "Practice what you preach. Your habits are not what you intend—they are what you do."
+  },
+  {
+    zh: "一步一个脚印。",
+    pinyin: "Yībù yīgè jiǎoyìn.",
+    en: "Every step makes a footprint.",
+    explanation: "Work steadily and make solid progress. Each completed habit is a mark you've left."
+  },
+  {
+    zh: "星星之火，可以燎原。",
+    pinyin: "Xīngxīng zhī huǒ, kěyǐ liáoyuán.",
+    en: "A single spark can start a prairie fire.",
+    explanation: "Seemingly small habits have far-reaching consequences. Your small action today matters."
+  },
+  {
+    zh: "留得青山在，不怕没柴烧。",
+    pinyin: "Liú dé qīngshān zài, búpà méi chái shāo.",
+    en: "While green hills remain, there'll always be wood to burn.",
+    explanation: "Where there is life, there is hope. Take care of yourself—you are your most important habit."
+  },
+  {
+    zh: "塞翁失马，焉知非福。",
+    pinyin: "Sài Wēng shī mǎ, yān zhī fēi fú.",
+    en: "Blessings come in disguise.",
+    explanation: "A missed day or a hard week may be exactly what teaches you what you needed to learn."
+  },
+  {
+    zh: "欲速则不达。",
+    pinyin: "Yù sù zé bùdá.",
+    en: "Those who only seek speed don't succeed.",
+    explanation: "More haste, less speed. Patience and the right method achieve the right result."
+  }
+];
+
+// Split proverbs for use as daily banner vs support toasts
+// Banner uses all; support toasts use the most encouraging ones
+const SUPPORT_IDX = [0,1,2,4,5,7,9,16]; // indices of best "support after completion" proverbs
+const REMINDERS = [
+  "¿Ya completaste {name} hoy? ¡Tenés esto! 🌿",
+  "Recordatorio: {name} te está esperando 💪",
+  "Un pequeño esfuerzo para {name} hoy, ¡vamos! 🎯",
+  "{name}: ¡todavía estás a tiempo de hacerlo hoy! ⏰"
+];
+
+function getHabits()   { return JSON.parse(localStorage.getItem('raices_habits') || '[]'); }
+function saveHabits(h) { localStorage.setItem('raices_habits', JSON.stringify(h)); }
+function getLogs()     { return JSON.parse(localStorage.getItem('raices_logs')   || '{}'); }
+function saveLogs(l)   { localStorage.setItem('raices_logs',   JSON.stringify(l)); }
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* ════════════════════════════════════════════════════
+   NAVIGATION
+   ════════════════════════════════════════════════════ */
+function switchView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('fab').style.display = name === 'today' || name === 'habits' ? 'flex' : 'none';
+  if (name === 'today')    renderToday();
+  if (name === 'habits')   renderHabits();
+  if (name === 'calendar') renderCalendar();
+}
+
+/* ════════════════════════════════════════════════════
+   HEADER & DATE
+   ════════════════════════════════════════════════════ */
+function initHeader() {
+  const d = new Date();
+  const days  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const months= ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('headerDate').innerHTML =
+    `${days[d.getDay()]}<br>${d.getDate()} de ${months[d.getMonth()]}`;
+  const h = d.getHours();
+  let greeting = h < 12 ? 'Buenos días 🌅' : h < 18 ? 'Buenas tardes ✨' : 'Buenas noches 🌙';
+  document.querySelector('#view-today .page-title').textContent = greeting;
+
+  // Daily Chinese proverb banner
+  const proverb = PROVERBS[d.getDate() % PROVERBS.length];
+  document.getElementById('motivationText').innerHTML =
+    `<span style="font-size:1.15rem">${proverb.zh}</span><br>
+     <span style="font-size:.78rem;opacity:.75;font-style:normal;font-family:'DM Sans',sans-serif">${proverb.pinyin}</span>`;
+  document.getElementById('motivationEn').textContent = `"${proverb.en}"`;
+  document.getElementById('motivationExpl').textContent = proverb.explanation;
+}
+
+/* ════════════════════════════════════════════════════
+   TODAY VIEW
+   ════════════════════════════════════════════════════ */
+function renderToday() {
+  const habits = getHabits();
+  const logs   = getLogs();
+  const today  = todayKey();
+  const dayLog = logs[today] || {};
+
+  const pending = habits.filter(h => !isDone(h, dayLog));
+  const done    = habits.filter(h =>  isDone(h, dayLog));
+
+  const pendingEl = document.getElementById('todayPending');
+  const doneEl    = document.getElementById('todayDone');
+  const doneLbl   = document.getElementById('doneLabel');
+
+  pendingEl.innerHTML = '';
+  doneEl.innerHTML    = '';
+
+  if (!habits.length) {
+    pendingEl.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2"/>
+      <path d="M20 32h24M32 20v24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <p>Agregá tu primer hábito<br>con el botón +</p></div>`;
+  }
+
+  pending.forEach(h => pendingEl.appendChild(buildTodayCard(h, dayLog, false)));
+  done.forEach(h    => doneEl.appendChild(buildTodayCard(h, dayLog, true)));
+  doneLbl.style.display = done.length ? 'block' : 'none';
+
+  // Progress ring
+  const total = habits.length;
+  const pct   = total ? Math.round((done.length / total) * 100) : 0;
+  const circ  = 175;
+  document.getElementById('progressRing').style.strokeDashoffset = circ - (circ * pct / 100);
+  document.getElementById('progressPct').textContent   = pct + '%';
+  document.getElementById('progressTitle').textContent =
+    `${done.length} de ${total} completados`;
+
+  updateStats();
+}
+
+function isDone(habit, dayLog) {
+  if (!dayLog[habit.id]) return false;
+  if (habit.type === 'check') return dayLog[habit.id].done;
+  return (dayLog[habit.id].value || 0) >= (habit.goal || 1);
+}
+
+function buildTodayCard(habit, dayLog, completed) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const log = dayLog[habit.id] || {};
+  const streak = calcStreak(habit.id);
+  const isCheck = habit.type === 'check';
+
+  const unit = getUnit(habit);
+  const value = log.value || 0;
+  const goal  = habit.goal || 1;
+
+  card.innerHTML = `
+    <div class="habit-card-today">
+      <div class="habit-icon" style="background:${habit.color}22">${habit.emoji}</div>
+      <div class="habit-info">
+        <div class="habit-name">${habit.name}</div>
+        <div class="habit-desc">${habit.desc || unit}</div>
+        ${streak > 0 ? `<span class="streak-badge">🔥 ${streak} días</span>` : ''}
+        ${!isCheck ? `
+        <div class="habit-measure">
+          <button class="measure-btn" onclick="adjustValue('${habit.id}', -1)">−</button>
+          <span class="measure-value">${value} / ${goal} ${unit}</span>
+          <button class="measure-btn" onclick="adjustValue('${habit.id}', 1)">+</button>
+        </div>` : ''}
+      </div>
+      <button class="check-btn ${completed ? 'done' : ''}" onclick="toggleHabit('${habit.id}', '${habit.type}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  return card;
+}
+
+function getUnit(habit) {
+  const units = {check:'hecho',minutes:'min',hours:'h',km:'km',reps:'reps',glasses:'vasos',pages:'págs',custom:habit.customUnit||'u'};
+  return units[habit.type] || 'u';
+}
+
+function toggleHabit(id, type) {
+  const logs   = getLogs();
+  const today  = todayKey();
+  if (!logs[today]) logs[today] = {};
+  if (type === 'check') {
+    logs[today][id] = { done: !logs[today][id]?.done };
+  } else {
+    // For measurable, toggle between done/not done
+    const habit = getHabits().find(h => h.id === id);
+    const goal  = habit?.goal || 1;
+    const cur   = logs[today][id]?.value || 0;
+    logs[today][id] = { value: cur >= goal ? 0 : goal };
+  }
+  saveLogs(logs);
+
+  const habits  = getHabits();
+  const dayLog  = logs[today] || {};
+  const habit   = habits.find(h => h.id === id);
+  if (habit && isDone(habit, dayLog)) {
+    const p = PROVERBS[SUPPORT_IDX[Math.floor(Math.random() * SUPPORT_IDX.length)]];
+    showProverbToast(p);
+  }
+  renderToday();
+}
+
+function adjustValue(id, delta) {
+  const logs  = getLogs();
+  const today = todayKey();
+  if (!logs[today]) logs[today] = {};
+  const cur = logs[today][id]?.value || 0;
+  logs[today][id] = { value: Math.max(0, cur + delta) };
+  saveLogs(logs);
+  renderToday();
+}
+
+function calcStreak(habitId) {
+  const logs = getLogs();
+  let streak = 0;
+  const d = new Date();
+  for (let i = 1; i <= 365; i++) {
+    d.setDate(d.getDate() - 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const log = logs[key]?.[habitId];
+    const habits = getHabits();
+    const habit  = habits.find(h => h.id === habitId);
+    if (!habit) break;
+    if (habit.type === 'check' ? log?.done : (log?.value||0) >= (habit.goal||1)) {
+      streak++;
+    } else break;
+  }
+  return streak;
+}
+
+/* ════════════════════════════════════════════════════
+   HABITS MANAGEMENT
+   ════════════════════════════════════════════════════ */
+function renderHabits() {
+  const habits = getHabits();
+  const list   = document.getElementById('habitsList');
+  const empty  = document.getElementById('habitsEmpty');
+  list.innerHTML = '';
+  if (!habits.length) { empty.style.display = 'flex'; return; }
+  empty.style.display = 'none';
+
+  habits.forEach(h => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="habit-manage-card">
+        <div class="habit-icon" style="background:${h.color}22">${h.emoji}</div>
+        <div class="habit-manage-info">
+          <div class="habit-name">${h.name}</div>
+          <div class="habit-desc">${h.desc || getUnit(h)}</div>
+        </div>
+        <div class="habit-manage-actions">
+          <button class="icon-btn" onclick="openEditHabit('${h.id}')" title="Editar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   MODAL LOGIC
+   ════════════════════════════════════════════════════ */
+let editingId = null;
+const EMOJIS = ['🌿','🏃‍♂️','📚','💧','🧘‍♀️','💪','🎯','🌅','✍️','🎨','🎵','🥗','😴','🚴‍♀️','🧠','💊','🌍','🐾','🫁','🫀'];
+let selectedEmoji = '🌿';
+let selectedColor = COLORS[0];
+
+function buildEmojiPicker() {
+  const p = document.getElementById('emojiPicker');
+  p.innerHTML = '';
+  EMOJIS.forEach(e => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'emoji-opt' + (e === selectedEmoji ? ' selected' : '');
+    btn.textContent = e;
+    btn.onclick = () => {
+      selectedEmoji = e;
+      document.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    p.appendChild(btn);
+  });
+}
+
+function buildColorPicker() {
+  const p = document.getElementById('colorPicker');
+  p.innerHTML = '';
+  COLORS.forEach(c => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'color-opt' + (c === selectedColor ? ' selected' : '');
+    btn.style.background = c;
+    btn.onclick = () => {
+      selectedColor = c;
+      document.querySelectorAll('.color-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    p.appendChild(btn);
+  });
+}
+
+function openAddHabit() {
+  editingId = null;
+  selectedEmoji = '🌿'; selectedColor = COLORS[0];
+  document.getElementById('modalTitle').textContent = 'Nuevo Hábito';
+  document.getElementById('hName').value  = '';
+  document.getElementById('hDesc').value  = '';
+  document.getElementById('hType').value  = 'check';
+  document.getElementById('hGoal').value  = '';
+  document.getElementById('hCustomUnit').value = '';
+  document.getElementById('deleteBtn').style.display = 'none';
+  buildEmojiPicker(); buildColorPicker(); updateUnit();
+  document.getElementById('habitModal').classList.add('open');
+}
+
+function openEditHabit(id) {
+  editingId = id;
+  const h = getHabits().find(x => x.id === id);
+  if (!h) return;
+  selectedEmoji = h.emoji; selectedColor = h.color;
+  document.getElementById('modalTitle').textContent = 'Editar Hábito';
+  document.getElementById('hName').value  = h.name;
+  document.getElementById('hDesc').value  = h.desc || '';
+  document.getElementById('hType').value  = h.type;
+  document.getElementById('hGoal').value  = h.goal || '';
+  document.getElementById('hCustomUnit').value = h.customUnit || '';
+  document.getElementById('deleteBtn').style.display = 'block';
+  buildEmojiPicker(); buildColorPicker(); updateUnit();
+  document.getElementById('habitModal').classList.add('open');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function updateUnit() {
+  const t = document.getElementById('hType').value;
+  document.getElementById('goalGroup').style.display     = t === 'check' ? 'none' : 'block';
+  document.getElementById('customUnitGroup').style.display = t === 'custom' ? 'block' : 'none';
+}
+
+function saveHabit() {
+  const name = document.getElementById('hName').value.trim();
+  if (!name) { alert('El nombre es obligatorio'); return; }
+
+  const habit = {
+    id:         editingId || Date.now().toString(),
+    name,
+    desc:       document.getElementById('hDesc').value.trim(),
+    type:       document.getElementById('hType').value,
+    goal:       parseInt(document.getElementById('hGoal').value) || 1,
+    customUnit: document.getElementById('hCustomUnit').value.trim(),
+    emoji:      selectedEmoji,
+    color:      selectedColor,
+    created:    editingId ? undefined : todayKey()
+  };
+  if (!editingId) habit.created = todayKey();
+
+  const habits = getHabits();
+  if (editingId) {
+    const idx = habits.findIndex(h => h.id === editingId);
+    if (idx !== -1) habits[idx] = { ...habits[idx], ...habit };
+  } else {
+    habits.push(habit);
+  }
+  saveHabits(habits);
+  closeModal('habitModal');
+  renderToday(); renderHabits();
+  showToast('reminder', editingId ? 'Hábito actualizado' : '¡Hábito creado! 🌱',
+    editingId ? `"${name}" fue modificado.` : `"${name}" se agregó a tu lista.`);
+}
+
+function deleteHabit() {
+  if (!confirm('¿Seguro que querés eliminar este hábito? Los datos históricos se conservarán.')) return;
+  const habits = getHabits().filter(h => h.id !== editingId);
+  saveHabits(habits);
+  closeModal('habitModal');
+  renderToday(); renderHabits();
+}
+
+/* ════════════════════════════════════════════════════
+   CALENDAR
+   ════════════════════════════════════════════════════ */
+let calYear, calMonth, calHabitFilter = null;
+
+function renderCalendar() {
+  const now = new Date();
+  if (!calYear)  calYear  = now.getFullYear();
+  if (!calMonth) calMonth = now.getMonth();
+  buildCalendar();
+  updateStats();
+  buildCalHabitChips();
+}
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  buildCalendar();
+}
+
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS_ES   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+function buildCalendar() {
+  document.getElementById('calMonthLabel').textContent = `${MONTHS_ES[calMonth]} ${calYear}`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  DAYS_ES.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-dow'; el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const today = new Date();
+
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty'; grid.appendChild(el);
+  }
+
+  const logs   = getLogs();
+  const habits = getHabits();
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dayLog = logs[key] || {};
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    if (day === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear())
+      el.classList.add('today');
+    el.textContent = day;
+
+    // dots
+    const relevantHabits = calHabitFilter
+      ? habits.filter(h => h.id === calHabitFilter)
+      : habits;
+
+    const dots = relevantHabits
+      .filter(h => isDone(h, dayLog))
+      .slice(0, 5);
+
+    if (dots.length) {
+      const row = document.createElement('div');
+      row.className = 'dot-row';
+      dots.forEach(h => {
+        const dot = document.createElement('div');
+        dot.className = 'cal-dot';
+        dot.style.background = h.color;
+        row.appendChild(dot);
+      });
+      el.appendChild(row);
+    }
+
+    el.onclick = () => showDayDetail(key, dayLog, day);
+    grid.appendChild(el);
+  }
+}
+
+function showDayDetail(key, dayLog, day) {
+  const detail = document.getElementById('calDayDetail');
+  const habits = getHabits();
+  detail.style.display = 'block';
+
+  const date = new Date(calYear, calMonth, day);
+  const dateStr = date.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
+
+  const completed = habits.filter(h => isDone(h, dayLog));
+  const missed    = habits.filter(h => !isDone(h, dayLog));
+
+  detail.innerHTML = `<h4>${dateStr}</h4>
+    ${completed.map(h => `<div style="color:var(--forest);margin-bottom:4px">${h.emoji} ${h.name} ✓</div>`).join('')}
+    ${missed.map(h => `<div style="color:var(--sage);margin-bottom:4px;opacity:.6">${h.emoji} ${h.name}</div>`).join('')}
+    ${!habits.length ? '<div style="opacity:.5">Sin hábitos registrados</div>' : ''}`;
+}
+
+function buildCalHabitChips() {
+  const habits = getHabits();
+  const container = document.getElementById('calHabitSelect');
+  container.innerHTML = '';
+
+  const all = document.createElement('button');
+  all.type = 'button';
+  all.className = 'cal-habit-chip selected';
+  all.style.background = '#4a7c5922'; all.style.color = '#4a7c59';
+  all.textContent = 'Todos';
+  all.onclick = () => { calHabitFilter = null; selectChip(all); buildCalendar(); };
+  container.appendChild(all);
+
+  habits.forEach(h => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'cal-habit-chip';
+    chip.style.background = h.color + '22'; chip.style.color = h.color;
+    chip.textContent = h.emoji + ' ' + h.name;
+    chip.onclick = () => { calHabitFilter = h.id; selectChip(chip); buildCalendar(); };
+    container.appendChild(chip);
+  });
+}
+
+function selectChip(el) {
+  document.querySelectorAll('.cal-habit-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function updateStats() {
+  const habits = getHabits();
+  const logs   = getLogs();
+  const today  = todayKey();
+  const dayLog = logs[today] || {};
+
+  document.getElementById('statTotal').textContent   = habits.length;
+  document.getElementById('statToday').textContent   = habits.filter(h => isDone(h, dayLog)).length;
+
+  // Best streak
+  let best = 0;
+  habits.forEach(h => { const s = calcStreak(h.id); if (s > best) best = s; });
+  document.getElementById('statStreak').textContent = best;
+
+  // Month compliance
+  const now = new Date();
+  const y = calYear || now.getFullYear(), m = calMonth !== undefined ? calMonth : now.getMonth();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  let totalPossible = 0, totalDone = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dl = logs[key] || {};
+    habits.forEach(h => {
+      totalPossible++;
+      if (isDone(h, dl)) totalDone++;
+    });
+  }
+  const pct = totalPossible ? Math.round((totalDone/totalPossible)*100) : 0;
+  document.getElementById('statMonth').textContent = pct + '%';
+}
+
+/* ════════════════════════════════════════════════════
+   TOASTS
+   ════════════════════════════════════════════════════ */
+function showToast(type, title, msg) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icon = type === 'support' ? '🀄' : type === 'reminder' ? '🔔' : '💡';
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+/* ════════════════════════════════════════════════════
+   PROVERB TOAST (rich card for habit completion)
+   ════════════════════════════════════════════════════ */
+function showProverbToast(proverb) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast support proverb-toast';
+  toast.innerHTML = `
+    <div style="width:100%">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-weight:700;font-size:.85rem">¡Hábito completado! 🀄</span>
+        <button class="toast-close" onclick="this.closest('.toast').remove()">✕</button>
+      </div>
+      <div style="font-size:1.1rem;margin-bottom:3px">${proverb.zh}</div>
+      <div style="font-size:.72rem;opacity:.75;margin-bottom:6px;font-style:italic">${proverb.pinyin}</div>
+      <div style="font-size:.8rem;opacity:.9;margin-bottom:6px;font-style:italic">"${proverb.en}"</div>
+      <div style="font-size:.73rem;opacity:.7;line-height:1.5;font-weight:300">${proverb.explanation}</div>
+    </div>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 9000);
+}
+function scheduleReminders() {
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Check every 30 min for pending habits
+  setInterval(() => {
+    const habits = getHabits();
+    const logs   = getLogs();
+    const today  = todayKey();
+    const dayLog = logs[today] || {};
+    const pending = habits.filter(h => !isDone(h, dayLog));
+
+    if (pending.length) {
+      const h = pending[Math.floor(Math.random() * pending.length)];
+      const msg = REMINDERS[Math.floor(Math.random() * REMINDERS.length)].replace('{name}', h.name);
+
+      if (Notification.permission === 'granted') {
+        new Notification('Habit Tracker 🀄', { body: msg, icon: '/icon-192.png' });
+      }
+      showToast('reminder', 'Recordatorio', msg);
+    }
+  }, 30 * 60 * 1000);
+
+  // Show welcome toast after a moment
+  setTimeout(() => {
+    const habits = getHabits();
+    if (habits.length) {
+      const logs   = getLogs();
+      const today  = todayKey();
+      const dayLog = logs[today] || {};
+      const pending = habits.filter(h => !isDone(h, dayLog));
+      if (pending.length) {
+        showToast('reminder', 'Hola de nuevo 🔔',
+          `Tenés ${pending.length} hábito${pending.length > 1 ? 's' : ''} pendiente${pending.length > 1 ? 's' : ''} hoy.`);
+      } else if (habits.length > 0) {
+        const p = PROVERBS[SUPPORT_IDX[Math.floor(Math.random() * SUPPORT_IDX.length)]];
+        showProverbToast(p);
+      }
+    }
+  }, 1200);
+}
+
+/* ════════════════════════════════════════════════════
+   CLOSE MODAL ON OVERLAY CLICK
+   ════════════════════════════════════════════════════ */
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+/* ════════════════════════════════════════════════════
+   SEED DATA (first run)
+   ════════════════════════════════════════════════════ */
+function maybeSeed() {
+  const habits = getHabits();
+  if (habits.length) return;
+  const seed = [
+    { id: 'seed1', name: 'Tomar agua', desc: 'Hidratación diaria', type: 'glasses', goal: 8, emoji: '💧', color: '#02547d', created: todayKey() },
+    { id: 'seed2', name: 'Caminar', desc: 'Movimiento consciente', type: 'km', goal: 3, emoji: '🏃‍♂️', color: '#027d27', created: todayKey() },
+    { id: 'seed3', name: 'Leer', desc: 'Aprendizaje continuo', type: 'pages', goal: 20, emoji: '📚', color: '#7d02fd', created: todayKey() },
+  ];
+  saveHabits(seed);
+}
+
+/* ════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════ */
+maybeSeed();
+initHeader();
+renderToday();
+scheduleReminders();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

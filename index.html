@@ -5,11 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#fd358a" />
   <meta name="description" content="Seguí tus hábitos con intención" />
+  <!--
+    Content Security Policy — sin recursos externos, sin inline eval.
+    Todos los recursos se sirven desde el mismo origen (file:// o servidor local).
+    Fuentes: stack de sistema, sin CDN.
+  -->
+  <meta http-equiv="Content-Security-Policy"
+    content="
+      default-src 'none';
+      style-src   'self' 'unsafe-inline';
+      script-src  'self' 'unsafe-inline';
+      font-src    'self';
+      img-src     'self' data:;
+      manifest-src 'self';
+      connect-src 'none';
+      frame-src   'none';
+      object-src  'none';
+      base-uri    'self';
+      form-action 'self';
+    " />
   <title>Habit Tracker</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
   <style>
+    /* ─── FUENTES DEL SISTEMA (sin CDN externo) ─────
+       Serif: Georgia → Times → serif
+       Sans : -apple-system → Segoe UI → sans-serif
+    ─────────────────────────────────────────────── */
     /* ─── TOKENS ─────────────────────────────────── */
     :root {
       /* Base palette */
@@ -53,7 +74,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 16px; scroll-behavior: smooth; }
     body {
-      font-family: 'DM Sans', sans-serif;
+      font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
       background: var(--cream);
       color: var(--ink);
       min-height: 100vh;
@@ -85,7 +106,7 @@
     .header-brand { display: flex; align-items: center; gap: 10px; }
     .header-brand svg { width: 28px; height: 28px; }
     .brand-name {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 1.5rem; font-style: italic;
       letter-spacing: .02em;
     }
@@ -106,7 +127,7 @@
       flex: 1; padding: 10px 0; border: none; background: none;
       cursor: pointer; display: flex; flex-direction: column;
       align-items: center; gap: 3px;
-      font-family: 'DM Sans', sans-serif; font-size: .65rem;
+      font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: .65rem;
       font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
       color: var(--moss); opacity: .45;
       transition: opacity var(--trans), color var(--trans);
@@ -128,7 +149,7 @@
 
     /* ─── PAGE TITLES ────────────────────────────── */
     .page-title {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 1.8rem; color: var(--forest);
       margin-bottom: 4px;
     }
@@ -153,7 +174,7 @@
       border-radius: 50%; right: -30px; top: -30px;
     }
     .motivation-banner p {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-style: italic; font-size: 1rem;
       line-height: 1.5; position: relative;
     }
@@ -187,7 +208,7 @@
     }
     .habit-info { flex: 1; min-width: 0; }
     .habit-name {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 1rem; color: var(--ink);
       margin-bottom: 2px;
     }
@@ -255,7 +276,7 @@
       font-weight: 700; font-size: .85rem; color: var(--forest);
     }
     .progress-text h3 {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 1.1rem; color: var(--forest);
     }
     .progress-text p { font-size: .8rem; color: var(--moss); font-weight: 300; }
@@ -307,7 +328,7 @@
       margin: 0 auto 20px;
     }
     .modal-title {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 1.4rem; color: var(--forest);
       margin-bottom: 20px;
     }
@@ -325,7 +346,7 @@
       border: 1.5px solid var(--sand);
       border-radius: var(--r);
       background: white; color: var(--ink);
-      font-family: 'DM Sans', sans-serif; font-size: .9rem;
+      font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: .9rem;
       transition: border-color var(--trans);
       outline: none;
     }
@@ -367,7 +388,7 @@
     .btn {
       width: 100%; padding: 14px;
       border: none; border-radius: var(--r);
-      font-family: 'DM Sans', sans-serif;
+      font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: .9rem; font-weight: 700;
       letter-spacing: .04em; cursor: pointer;
       transition: all var(--trans);
@@ -408,7 +429,7 @@
       margin-bottom: 16px;
     }
     .calendar-month {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 1.2rem; color: var(--forest);
     }
     .cal-nav {
@@ -473,7 +494,7 @@
       font-size: .85rem; color: var(--moss);
     }
     .cal-day-detail h4 {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       color: var(--forest); margin-bottom: 8px;
     }
 
@@ -516,7 +537,7 @@
       color: var(--sage);
     }
     .empty-state svg { width: 64px; height: 64px; opacity: .4; margin-bottom: 12px; }
-    .empty-state p { font-family: 'Playfair Display', serif; font-style: italic; }
+    .empty-state p { font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
 
     /* ─── STAT GRID ──────────────────────────────── */
     .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
@@ -525,7 +546,7 @@
     .stat-card.sky   { border-left-color: var(--teal); }
     .stat-card.rust  { border-left-color: var(--pink); }
     .stat-num {
-      font-family: 'DM Serif Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 1.6rem; color: var(--forest);
     }
     .stat-label { font-size: .72rem; color: var(--moss); font-weight: 300; }
@@ -572,8 +593,8 @@
 
     <div class="motivation-banner" id="motivationBanner">
       <p id="motivationText"></p>
-      <p id="motivationEn" style="font-family:'DM Sans',sans-serif;font-size:.82rem;opacity:.85;margin-top:8px;font-style:italic"></p>
-      <p id="motivationExpl" style="font-family:'DM Sans',sans-serif;font-size:.75rem;opacity:.65;margin-top:6px;font-weight:300;line-height:1.5"></p>
+      <p id="motivationEn" style="font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:.82rem;opacity:.85;margin-top:8px;font-style:italic"></p>
+      <p id="motivationExpl" style="font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:.75rem;opacity:.65;margin-top:6px;font-weight:300;line-height:1.5"></p>
       <small>🀄 Proverbio chino del día</small>
     </div>
 
@@ -642,6 +663,95 @@
     </div>
   </section>
 
+  <!-- ═══ DATOS ════════════════════════════════════════ -->
+  <section class="view" id="view-data">
+    <h1 class="page-title">Datos</h1>
+    <p class="page-sub">Exportá, importá y hacé backup de tus hábitos</p>
+
+    <!-- INFO CARD -->
+    <div class="card" style="border-left:3px solid var(--teal);margin-bottom:20px">
+      <div style="font-size:.82rem;color:var(--mid);line-height:1.6">
+        <strong style="color:var(--ink)">¿Cómo sincronizar entre dispositivos?</strong><br>
+        1. Exportá tu backup en el dispositivo A.<br>
+        2. Pasá el archivo <code style="background:var(--parchment);padding:1px 5px;border-radius:4px">.json</code> al dispositivo B (email, nube, USB).<br>
+        3. Importalo en el dispositivo B.<br>
+        Los datos se guardan <strong>sólo en tu dispositivo</strong> — sin servidores externos.
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="section-label">Exportar</div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div style="width:42px;height:42px;border-radius:12px;background:var(--green-light);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" width="22" height="22"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div>
+          <div style="font-weight:700;color:var(--ink)">Exportar todo</div>
+          <div style="font-size:.78rem;color:var(--subtle)">Hábitos + historial completo</div>
+        </div>
+      </div>
+      <div id="exportStats" style="font-size:.8rem;color:var(--mid);margin-bottom:12px;padding:10px;background:var(--parchment);border-radius:8px"></div>
+      <button class="btn btn-primary" onclick="exportData()" style="background:var(--green)">
+        ↓ Descargar backup.json
+      </button>
+    </div>
+
+    <!-- IMPORT -->
+    <div class="section-label">Importar</div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div style="width:42px;height:42px;border-radius:12px;background:var(--pink-light);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" width="22" height="22"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 5 17 10"/><line x1="12" y1="5" x2="12" y2="17"/></svg>
+        </div>
+        <div>
+          <div style="font-weight:700;color:var(--ink)">Importar backup</div>
+          <div style="font-size:.78rem;color:var(--subtle)">Cargá un archivo .json exportado</div>
+        </div>
+      </div>
+
+      <!-- Drop zone -->
+      <div id="dropZone"
+        style="border:2px dashed var(--sand);border-radius:12px;padding:28px 16px;
+               text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px;
+               background:var(--parchment)"
+        onclick="document.getElementById('fileInput').click()"
+        ondragover="dzOver(event)"
+        ondragleave="dzLeave(event)"
+        ondrop="dzDrop(event)">
+        <div style="font-size:1.6rem;margin-bottom:6px">📂</div>
+        <div style="font-size:.85rem;color:var(--mid)">Tocá para seleccionar un archivo</div>
+        <div style="font-size:.75rem;color:var(--subtle);margin-top:3px">o arrastrá y soltá aquí</div>
+      </div>
+      <input type="file" id="fileInput" accept=".json,application/json"
+        style="display:none" onchange="handleFileSelect(event)" />
+
+      <div id="importPreview" style="display:none;margin-bottom:12px;padding:12px;
+        background:var(--parchment);border-radius:8px;font-size:.82rem;color:var(--mid)"></div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" id="importMergeBtn" onclick="importData('merge')"
+          style="display:none;flex:1">
+          ↕ Combinar datos
+        </button>
+        <button class="btn btn-primary" id="importReplaceBtn" onclick="importData('replace')"
+          style="display:none;flex:1;background:var(--pink)">
+          ↺ Reemplazar todo
+        </button>
+      </div>
+      <div style="font-size:.72rem;color:var(--subtle);margin-top:8px;line-height:1.5" id="importHint"></div>
+    </div>
+
+    <!-- DANGER ZONE -->
+    <div class="section-label" style="color:var(--red)">Zona de peligro</div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <div style="font-size:.82rem;color:var(--mid);margin-bottom:12px">
+        Borrá todos los datos guardados en este dispositivo. Esta acción no se puede deshacer. Hacé un backup antes.
+      </div>
+      <button class="btn btn-danger" onclick="clearAllData()">🗑 Borrar todos los datos</button>
+    </div>
+  </section>
+
 </main>
 
 <!-- BOTTOM NAV -->
@@ -657,6 +767,10 @@
   <button class="nav-btn" onclick="switchView('calendar', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     <span>Calendario</span>
+  </button>
+  <button class="nav-btn" onclick="switchView('data', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+    <span>Datos</span>
   </button>
 </nav>
 
@@ -879,7 +993,7 @@ function switchView(name, btn) {
   document.getElementById('fab').style.display = name === 'today' || name === 'habits' ? 'flex' : 'none';
   if (name === 'today')    renderToday();
   if (name === 'habits')   renderHabits();
-  if (name === 'calendar') renderCalendar();
+  if (name === 'data')     renderDataView();
 }
 
 /* ════════════════════════════════════════════════════
@@ -899,7 +1013,7 @@ function initHeader() {
   const proverb = PROVERBS[d.getDate() % PROVERBS.length];
   document.getElementById('motivationText').innerHTML =
     `<span style="font-size:1.15rem">${proverb.zh}</span><br>
-     <span style="font-size:.78rem;opacity:.75;font-style:normal;font-family:'DM Sans',sans-serif">${proverb.pinyin}</span>`;
+     <span style="font-size:.78rem;opacity:.75;font-style:normal;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif">${proverb.pinyin}</span>`;
   document.getElementById('motivationEn').textContent = `"${proverb.en}"`;
   document.getElementById('motivationExpl').textContent = proverb.explanation;
 }
@@ -1400,6 +1514,221 @@ function showProverbToast(proverb) {
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 9000);
 }
+
+/* ════════════════════════════════════════════════════
+   DATA MANAGEMENT — Export / Import / Clear
+   ════════════════════════════════════════════════════
+
+   SEGURIDAD:
+   · Todo el procesamiento ocurre en el cliente (sin red).
+   · El JSON importado se valida estrictamente antes de
+     tocar localStorage: se verifican tipos, longitudes
+     máximas y se rechazan campos desconocidos.
+   · No se usa eval() ni innerHTML con datos del usuario.
+   · El archivo se lee con FileReader en modo texto.
+   · No se aceptan archivos > 5 MB.
+   ════════════════════════════════════════════════════ */
+
+const BACKUP_VERSION = 1;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+let pendingImportData = null;
+
+function renderDataView() {
+  const habits  = getHabits();
+  const logs    = getLogs();
+  const logDays = Object.keys(logs).length;
+  const logEntries = Object.values(logs).reduce((n, d) => n + Object.keys(d).length, 0);
+  document.getElementById('exportStats').innerHTML =
+    `📋 <strong>${habits.length}</strong> hábito${habits.length !== 1 ? 's' : ''} &nbsp;·&nbsp;
+     📅 <strong>${logDays}</strong> día${logDays !== 1 ? 's' : ''} con registros &nbsp;·&nbsp;
+     ✓ <strong>${logEntries}</strong> entradas de seguimiento`;
+  resetImportUI();
+}
+
+function exportData() {
+  const payload = {
+    _app:     'habit-tracker',
+    _version: BACKUP_VERSION,
+    _exported: new Date().toISOString(),
+    habits:   getHabits(),
+    logs:     getLogs()
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href     = url;
+  a.download = `habit-tracker-backup-${date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('reminder', 'Backup exportado ✓', `habit-tracker-backup-${date}.json descargado.`);
+}
+
+function handleFileSelect(evt) {
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if (file) readAndValidateFile(file);
+}
+
+function dzOver(e)  { e.preventDefault(); document.getElementById('dropZone').style.borderColor='var(--pink)'; document.getElementById('dropZone').style.background='var(--pink-light)'; }
+function dzLeave(e) { e.preventDefault(); document.getElementById('dropZone').style.borderColor='var(--sand)'; document.getElementById('dropZone').style.background='var(--parchment)'; }
+function dzDrop(e)  { e.preventDefault(); dzLeave(e); const f=e.dataTransfer.files[0]; if(f) readAndValidateFile(f); }
+
+function readAndValidateFile(file) {
+  resetImportUI();
+  if (file.size > MAX_FILE_BYTES) { showImportError('El archivo es demasiado grande (máx. 5 MB).'); return; }
+  if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+    showImportError('Solo se aceptan archivos .json exportados por esta app.'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      if (e.target.result.length > MAX_FILE_BYTES) { showImportError('Archivo demasiado grande.'); return; }
+      const data      = JSON.parse(e.target.result);
+      const validated = validateBackupPayload(data);
+      if (!validated.ok) { showImportError(validated.error); return; }
+      pendingImportData = validated.payload;
+      showImportPreview(validated.payload, file.name);
+    } catch { showImportError('El archivo no es un JSON válido o está dañado.'); }
+  };
+  reader.onerror = () => showImportError('No se pudo leer el archivo.');
+  reader.readAsText(file, 'UTF-8');
+}
+
+function validateBackupPayload(data) {
+  if (typeof data !== 'object' || data === null || Array.isArray(data))
+    return { ok:false, error:'Formato de archivo incorrecto.' };
+  if (data._app !== 'habit-tracker')
+    return { ok:false, error:'Este archivo no fue exportado por Habit Tracker.' };
+  if (data._version !== BACKUP_VERSION)
+    return { ok:false, error:`Versión de backup incompatible (esperada: ${BACKUP_VERSION}).` };
+  if (!Array.isArray(data.habits))
+    return { ok:false, error:'El campo "habits" no es válido.' };
+  if (typeof data.logs !== 'object' || data.logs === null)
+    return { ok:false, error:'El campo "logs" no es válido.' };
+
+  const ALLOWED_HABIT_KEYS = new Set(['id','name','desc','type','goal','customUnit','emoji','color','created']);
+  const ALLOWED_TYPES      = new Set(['check','minutes','hours','km','reps','glasses','pages','custom']);
+  const cleanHabits = [];
+  for (const h of data.habits) {
+    if (typeof h !== 'object' || h === null) return { ok:false, error:'Hábito con formato inválido.' };
+    const clean = {};
+    for (const k of ALLOWED_HABIT_KEYS) { if (k in h) clean[k] = h[k]; }
+    if (typeof clean.id   !== 'string' || clean.id.length > 40)   return { ok:false, error:'ID de hábito inválido.' };
+    if (typeof clean.name !== 'string' || !clean.name.length || clean.name.length > 80)
+                                                                    return { ok:false, error:`Nombre inválido: "${String(clean.name).slice(0,20)}"` };
+    if (!ALLOWED_TYPES.has(clean.type))                             return { ok:false, error:`Tipo desconocido: "${clean.type}"` };
+    if (clean.goal !== undefined && (typeof clean.goal !== 'number' || clean.goal < 0 || clean.goal > 1e5))
+                                                                    return { ok:false, error:'Meta fuera de rango.' };
+    clean.name       = sanitizeStr(clean.name);
+    clean.desc       = sanitizeStr(clean.desc || '');
+    clean.emoji      = sanitizeStr(clean.emoji || '⭐').slice(0, 8);
+    clean.customUnit = sanitizeStr(clean.customUnit || '').slice(0, 20);
+    clean.color      = /^#[0-9a-fA-F]{6}$/.test(clean.color || '') ? clean.color : '#fd358a';
+    cleanHabits.push(clean);
+  }
+  if (cleanHabits.length > 200) return { ok:false, error:'Demasiados hábitos (máx. 200).' };
+
+  const cleanLogs = {};
+  const DATE_RE   = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
+  for (const [dk, dayLog] of Object.entries(data.logs)) {
+    if (!DATE_RE.test(dk) || typeof dayLog !== 'object' || dayLog === null) continue;
+    cleanLogs[dk] = {};
+    for (const [hid, entry] of Object.entries(dayLog)) {
+      if (typeof hid !== 'string' || hid.length > 40 || typeof entry !== 'object' || entry === null) continue;
+      const ce = {};
+      if (typeof entry.done  === 'boolean')                                 ce.done  = entry.done;
+      if (typeof entry.value === 'number' && entry.value >= 0 && entry.value <= 1e6) ce.value = entry.value;
+      cleanLogs[dk][hid] = ce;
+    }
+  }
+  if (Object.keys(cleanLogs).length > 3650) return { ok:false, error:'Demasiados días en el backup (máx. 3650).' };
+
+  return { ok:true, payload:{ habits:cleanHabits, logs:cleanLogs, _exported:String(data._exported||'') } };
+}
+
+function sanitizeStr(s) {
+  return String(s).replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 500);
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function showImportPreview(payload, filename) {
+  const hCount = payload.habits.length;
+  const lCount = Object.keys(payload.logs).length;
+  const expDate = payload._exported ? new Date(payload._exported).toLocaleDateString('es-AR') : '?';
+  const preview = document.getElementById('importPreview');
+  preview.style.display = 'block';
+  preview.innerHTML =
+    `<strong>✓ Archivo válido:</strong> <code>${escHtml(filename)}</code><br>` +
+    `📋 ${hCount} hábito${hCount!==1?'s':''} &nbsp;·&nbsp; 📅 ${lCount} día${lCount!==1?'s':''} con registros<br>` +
+    `🗓 Exportado: ${escHtml(expDate)}`;
+  const hint = document.getElementById('importHint');
+  hint.textContent = getHabits().length
+    ? '↕ Combinar: agrega sin borrar los actuales (mismo ID = se actualiza). ↺ Reemplazar: borra TODO y carga el backup.'
+    : 'No tenés hábitos actuales — podés importar directamente.';
+  document.getElementById('importMergeBtn').style.display   = 'block';
+  document.getElementById('importReplaceBtn').style.display = 'block';
+}
+
+function showImportError(msg) {
+  const preview = document.getElementById('importPreview');
+  preview.style.display = 'block';
+  preview.innerHTML = `<span style="color:var(--red)">✗ ${escHtml(msg)}</span>`;
+  pendingImportData = null;
+}
+
+function resetImportUI() {
+  pendingImportData = null;
+  ['importPreview','importMergeBtn','importReplaceBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; el.innerHTML = el.tagName === 'DIV' ? '' : el.innerHTML; }
+  });
+  const hint = document.getElementById('importHint');
+  if (hint) hint.textContent = '';
+  const dz = document.getElementById('dropZone');
+  if (dz) { dz.style.borderColor='var(--sand)'; dz.style.background='var(--parchment)'; }
+}
+
+function importData(mode) {
+  if (!pendingImportData) return;
+  if (mode === 'replace') {
+    if (!confirm('⚠️ Reemplazar TODO\n\nSe borrarán todos tus hábitos y registros actuales. ¿Continuar?')) return;
+    saveHabits(pendingImportData.habits);
+    saveLogs(pendingImportData.logs);
+    showToast('reminder', 'Importación completa ✓', `${pendingImportData.habits.length} hábitos cargados.`);
+  } else {
+    const existingMap = Object.fromEntries(getHabits().map(h => [h.id, h]));
+    for (const h of pendingImportData.habits) existingMap[h.id] = h;
+    saveHabits(Object.values(existingMap));
+    const existingLogs = getLogs();
+    for (const [date, dayLog] of Object.entries(pendingImportData.logs)) {
+      if (!existingLogs[date]) existingLogs[date] = {};
+      Object.assign(existingLogs[date], dayLog);
+    }
+    saveLogs(existingLogs);
+    showToast('reminder', 'Combinación completa ✓', `${pendingImportData.habits.length} hábitos fusionados.`);
+  }
+  pendingImportData = null;
+  resetImportUI();
+  renderDataView();
+  renderToday();
+  renderHabits();
+}
+
+function clearAllData() {
+  if (!confirm('🗑 Borrar TODOS los datos\n\nEsto eliminará hábitos y registros de este dispositivo. No se puede deshacer.\n\n¿Continuar?')) return;
+  localStorage.removeItem('raices_habits');
+  localStorage.removeItem('raices_logs');
+  showToast('reminder', 'Datos borrados', 'Todos los datos fueron eliminados.');
+  renderDataView(); renderToday(); renderHabits();
+}
+
 function scheduleReminders() {
   // Request notification permission
   if ('Notification' in window && Notification.permission === 'default') {

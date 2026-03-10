@@ -21,7 +21,7 @@ self.addEventListener('fetch', e => {
 
 // Push notifications
 self.addEventListener('push', e => {
-  const data = e.data?.json() || { title: 'Raíces 🌿', body: '¡No olvides tus hábitos de hoy!' };
+  const data = e.data?.json() || { title: 'Habit tracker 🌿', body: '¡No olvides tus hábitos de hoy!' };
   e.waitUntil(self.registration.showNotification(data.title, {
     body: data.body, icon: '/icon-192.png', badge: '/icon-192.png',
     vibrate: [100, 50, 100]

@@ -1,18 +1,29 @@
 /*
-  Habit Tracker — Service Worker
-  ════════════════════════════════
-  Estrategia: Cache-first, offline-first.
-  · Solo cachea recursos del mismo origen.
-  · No hace fetch a ningún recurso externo.
-  · Si el fetch falla, sirve desde caché.
-  · No loguea ni envía datos a ningún servidor.
+  Habit Tracker — Service Worker v3
+  ════════════════════════════════════
+  · Cache-first, 100% offline
+  · Scope relativo (./) para GitHub Pages en subdirectorio
+  · Bloquea todo fetch cross-origin
+  · Sin telemetría ni conexiones externas
 */
 
-const CACHE_NAME = 'habit-tracker-v2';
-const ASSETS = ['./', './index.html', './manifest.json'];
+const CACHE_NAME = 'habit-tracker-v3';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json'
+  // Los iconos son opcionales - se generan via Canvas si faltan
+];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      // addAll con fallback individual para no fallar si falta un asset
+      return Promise.allSettled(
+        ASSETS.map(url => cache.add(url).catch(() => {}))
+      );
+    })
+  );
   self.skipWaiting();
 });
 
@@ -28,18 +39,20 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Bloquea cualquier petición cross-origin
+  // Bloquear cross-origin estrictamente
   if (url.origin !== self.location.origin) {
-    event.respondWith(new Response('', { status: 403, statusText: 'Blocked' }));
+    event.respondWith(new Response('', { status: 403, statusText: 'Blocked: cross-origin' }));
     return;
   }
+
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
+
       return fetch(event.request).then(response => {
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && response.type !== 'opaque') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
         }
@@ -55,14 +68,15 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push', event => {
   if (!event.data) return;
   let data;
-  try { data = event.data.json(); } catch { data = { title: 'Habit Tracker', body: event.data.text() }; }
+  try { data = event.data.json(); }
+  catch { data = { title: 'Habit Tracker', body: event.data.text() }; }
   event.waitUntil(
     self.registration.showNotification(data.title || 'Habit Tracker', {
-      body: data.body || '¡No olvides tus hábitos de hoy!',
-      icon: './icon-192.png',
-      badge: './icon-192.png',
-      vibrate: [100, 50, 100],
-      tag: 'habit-reminder',
+      body:     data.body || '¡No olvides tus hábitos de hoy!',
+      icon:     './icon-192.png',
+      badge:    './icon-192.png',
+      vibrate:  [100, 50, 100],
+      tag:      'habit-reminder',
       renotify: false
     })
   );

@@ -462,23 +462,30 @@
       display: flex; align-items: center; justify-content: center;
       font-size: .8rem; cursor: pointer; position: relative;
       transition: all var(--trans);
+      flex-direction: column; gap: 0;
+    }
+    .cal-day-num {
+      line-height: 1;
+      /* El número ocupa la zona central, los dots van abajo */
     }
     .cal-day:hover { background: var(--parchment); }
-    .cal-day.today { font-weight: 700; color: var(--forest); }
+    .cal-day.today .cal-day-num { font-weight: 700; color: var(--pink); }
     .cal-day.today::after {
       content: ''; position: absolute;
-      bottom: 4px; left: 50%; transform: translateX(-50%);
+      bottom: 3px; left: 50%; transform: translateX(-50%);
       width: 4px; height: 4px; border-radius: 50%;
       background: var(--pink);
     }
+    .cal-day.all-done { background: var(--green-light); }
+    .cal-day.all-done:hover { background: #b8edca; }
     .cal-day .dot-row {
-      position: absolute; bottom: 2px; left: 0; right: 0;
+      position: absolute; bottom: 3px; left: 0; right: 0;
       display: flex; justify-content: center; gap: 2px;
     }
     .cal-dot {
       width: 5px; height: 5px; border-radius: 50%;
     }
-    .cal-day.empty { cursor: default; }
+    .cal-day.empty { cursor: default; pointer-events: none; }
 
     /* HABIT CALENDAR LEGEND */
     .cal-habit-selector {
@@ -1325,10 +1332,11 @@ function deleteHabit() {
    ════════════════════════════════════════════════════ */
 let calYear = null, calMonth = null, calHabitFilter = null;
 
+// Inicializado con la fecha real del sistema (Marzo 2026 o la que sea)
 function renderCalendar() {
   const now = new Date();
   if (calYear  === null) calYear  = now.getFullYear();
-  if (calMonth === null) calMonth = now.getMonth();
+  if (calMonth === null) calMonth = now.getMonth();    // 0=enero … 11=diciembre
   buildCalendar();
   updateStats();
   buildCalHabitChips();
@@ -1338,85 +1346,164 @@ function changeMonth(delta) {
   calMonth += delta;
   if (calMonth > 11) { calMonth = 0;  calYear++; }
   if (calMonth < 0)  { calMonth = 11; calYear--; }
+  // Limpiar detalle al cambiar mes
+  const det = document.getElementById('calDayDetail');
+  if (det) det.style.display = 'none';
   buildCalendar();
 }
 
-const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const DAYS_ES   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const DAYS_FULL = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MONTHS_FULL = ['enero','febrero','marzo','abril','mayo','junio',
+                     'julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
 function buildCalendar() {
-  document.getElementById('calMonthLabel').textContent = `${MONTHS_ES[calMonth]} ${calYear}`;
+  // ── Etiqueta del mes ──────────────────────────────
+  document.getElementById('calMonthLabel').textContent =
+    MONTHS_ES[calMonth] + ' ' + calYear;
+
   const grid = document.getElementById('calGrid');
   grid.innerHTML = '';
 
-  DAYS_ES.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'cal-dow'; el.textContent = d;
+  // ── Cabecera días de la semana ────────────────────
+  DAYS_ES.forEach(function(d) {
+    var el = document.createElement('div');
+    el.className   = 'cal-dow';
+    el.textContent = d;
     grid.appendChild(el);
   });
 
-  const firstDay = new Date(calYear, calMonth, 1).getDay();
-  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
-  const today = new Date();
+  // ── Cálculos de calendario (sin librerías) ────────
+  // Primer día de la semana del mes (0=dom, 6=sáb)
+  var firstDow   = new Date(calYear, calMonth, 1).getDay();
+  // Cantidad de días del mes
+  var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
-  for (let i = 0; i < firstDay; i++) {
-    const el = document.createElement('div');
-    el.className = 'cal-day empty'; grid.appendChild(el);
+  // Hoy
+  var now        = new Date();
+  var todayY     = now.getFullYear();
+  var todayM     = now.getMonth();
+  var todayD     = now.getDate();
+
+  var logs   = getLogs();
+  var habits = getHabits();
+
+  // ── Celdas vacías al inicio ───────────────────────
+  for (var i = 0; i < firstDow; i++) {
+    var empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
   }
 
-  const logs   = getLogs();
-  const habits = getHabits();
+  // ── Días del mes ──────────────────────────────────
+  for (var day = 1; day <= daysInMonth; day++) {
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const dayLog = logs[key] || {};
-    const el = document.createElement('div');
-    el.className = 'cal-day';
-    if (day === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear())
-      el.classList.add('today');
-    el.textContent = day;
+    var key    = calYear + '-' +
+                 String(calMonth + 1).padStart(2, '0') + '-' +
+                 String(day).padStart(2, '0');
+    var dayLog = logs[key] || {};
 
-    // dots
-    const relevantHabits = calHabitFilter
-      ? habits.filter(h => h.id === calHabitFilter)
-      : habits;
+    var cell = document.createElement('div');
+    cell.className = 'cal-day';
 
-    const dots = relevantHabits
-      .filter(h => isDone(h, dayLog))
-      .slice(0, 5);
-
-    if (dots.length) {
-      const row = document.createElement('div');
-      row.className = 'dot-row';
-      dots.forEach(h => {
-        const dot = document.createElement('div');
-        dot.className = 'cal-dot';
-        dot.style.background = h.color;
-        row.appendChild(dot);
-      });
-      el.appendChild(row);
+    // Marcar hoy
+    if (day === todayD && calMonth === todayM && calYear === todayY) {
+      cell.classList.add('today');
     }
 
-    el.onclick = () => showDayDetail(key, dayLog, day);
-    grid.appendChild(el);
+    // CRÍTICO: usar un <span> para el número, NO textContent directo
+    // así los dots que se añaden después no se borran
+    var numSpan = document.createElement('span');
+    numSpan.className   = 'cal-day-num';
+    numSpan.textContent = day;
+    cell.appendChild(numSpan);
+
+    // ── Dots de hábitos completados ─────────────────
+    var relevant = calHabitFilter
+      ? habits.filter(function(h) { return h.id === calHabitFilter; })
+      : habits;
+
+    var done = relevant.filter(function(h) { return isDone(h, dayLog); });
+
+    if (done.length > 0) {
+      var dotRow = document.createElement('div');
+      dotRow.className = 'dot-row';
+      var shown = done.slice(0, 5);
+      shown.forEach(function(h) {
+        var dot = document.createElement('div');
+        dot.className        = 'cal-dot';
+        dot.style.background = h.color;
+        dotRow.appendChild(dot);
+      });
+      cell.appendChild(dotRow);
+      // Fondo suave si todos los hábitos del día están completos
+      if (relevant.length > 0 && done.length === relevant.length) {
+        cell.classList.add('all-done');
+      }
+    }
+
+    // Closure seguro para el click
+    (function(k, dl, d) {
+      cell.addEventListener('click', function() { showDayDetail(k, dl, d); });
+    }(key, dayLog, day));
+
+    grid.appendChild(cell);
   }
 }
 
 function showDayDetail(key, dayLog, day) {
-  const detail = document.getElementById('calDayDetail');
-  const habits = getHabits();
+  var detail = document.getElementById('calDayDetail');
+  var habits = getHabits();
   detail.style.display = 'block';
 
-  const date = new Date(calYear, calMonth, day);
-  const dateStr = date.toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
+  // Fecha formateada sin toLocaleDateString (evita bugs de locale)
+  var dow     = new Date(calYear, calMonth, day).getDay();
+  var dateStr = DAYS_FULL[dow] + ' ' + day + ' de ' + MONTHS_FULL[calMonth] + ' ' + calYear;
 
-  const completed = habits.filter(h => isDone(h, dayLog));
-  const missed    = habits.filter(h => !isDone(h, dayLog));
+  var completed = habits.filter(function(h) { return  isDone(h, dayLog); });
+  var missed    = habits.filter(function(h) { return !isDone(h, dayLog); });
 
-  detail.innerHTML = `<h4>${dateStr}</h4>
-    ${completed.map(h => `<div style="color:var(--forest);margin-bottom:4px">${h.emoji} ${h.name} ✓</div>`).join('')}
-    ${missed.map(h => `<div style="color:var(--sage);margin-bottom:4px;opacity:.6">${h.emoji} ${h.name}</div>`).join('')}
-    ${!habits.length ? '<div style="opacity:.5">Sin hábitos registrados</div>' : ''}`;
+  // Limpiar y construir sin innerHTML con datos del usuario
+  detail.innerHTML = '';
+
+  var title = document.createElement('h4');
+  // Capitalizar primera letra
+  title.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  detail.appendChild(title);
+
+  if (!habits.length) {
+    var empty = document.createElement('div');
+    empty.style.opacity = '.5';
+    empty.textContent   = 'Sin hábitos registrados';
+    detail.appendChild(empty);
+    return;
+  }
+
+  completed.forEach(function(h) {
+    var row = document.createElement('div');
+    row.style.cssText = 'color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:6px';
+    var emoji = document.createElement('span');
+    emoji.textContent = h.emoji;
+    var name  = document.createElement('span');
+    name.textContent  = h.name + ' ✓';
+    row.appendChild(emoji);
+    row.appendChild(name);
+    detail.appendChild(row);
+  });
+
+  missed.forEach(function(h) {
+    var row = document.createElement('div');
+    row.style.cssText = 'color:var(--subtle);margin-bottom:4px;display:flex;align-items:center;gap:6px;opacity:.55';
+    var emoji = document.createElement('span');
+    emoji.textContent = h.emoji;
+    var name  = document.createElement('span');
+    name.textContent  = h.name;
+    row.appendChild(emoji);
+    row.appendChild(name);
+    detail.appendChild(row);
+  });
 }
 
 function buildCalHabitChips() {
@@ -1669,7 +1756,10 @@ function escHtml(str) {
 function showImportPreview(payload, filename) {
   const hCount = payload.habits.length;
   const lCount = Object.keys(payload.logs).length;
-  const expDate = payload._exported ? new Date(payload._exported).toLocaleDateString('es-AR') : '?';
+  const expRaw  = payload._exported ? new Date(payload._exported) : null;
+  const expDate = expRaw
+    ? (DAYS_ES[expRaw.getDay()] + ' ' + expRaw.getDate() + '/' + (expRaw.getMonth()+1) + '/' + expRaw.getFullYear())
+    : '?';
   const preview = document.getElementById('importPreview');
   preview.style.display = 'block';
   preview.innerHTML =

@@ -18,14 +18,21 @@
       font-src    'self';
       img-src     'self' data:;
       manifest-src 'self';
+      worker-src  'self';
       connect-src 'none';
       frame-src   'none';
       object-src  'none';
       base-uri    'self';
-      form-action 'self';
+      form-action 'none';
     " />
   <title>Habit Tracker</title>
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="./manifest.json" />
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Habit Tracker" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <!-- Fallback: si no hay icon-192.png, el browser usa el SVG inline via JS -->
   <style>
     /* ─── FUENTES DEL SISTEMA (sin CDN externo) ─────
        Serif: Georgia → Times → serif
@@ -1316,12 +1323,12 @@ function deleteHabit() {
 /* ════════════════════════════════════════════════════
    CALENDAR
    ════════════════════════════════════════════════════ */
-let calYear, calMonth, calHabitFilter = null;
+let calYear = null, calMonth = null, calHabitFilter = null;
 
 function renderCalendar() {
   const now = new Date();
-  if (!calYear)  calYear  = now.getFullYear();
-  if (!calMonth) calMonth = now.getMonth();
+  if (calYear  === null) calYear  = now.getFullYear();
+  if (calMonth === null) calMonth = now.getMonth();
   buildCalendar();
   updateStats();
   buildCalHabitChips();
@@ -1455,9 +1462,10 @@ function updateStats() {
   habits.forEach(h => { const s = calcStreak(h.id); if (s > best) best = s; });
   document.getElementById('statStreak').textContent = best;
 
-  // Month compliance
+  // Month compliance — use current month if calendar not yet visited
   const now = new Date();
-  const y = calYear || now.getFullYear(), m = calMonth !== undefined ? calMonth : now.getMonth();
+  const y = calYear  !== null ? calYear  : now.getFullYear();
+  const m = calMonth !== null ? calMonth : now.getMonth();
   const daysInMonth = new Date(y, m+1, 0).getDate();
   let totalPossible = 0, totalDone = 0;
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1795,16 +1803,64 @@ function maybeSeed() {
 }
 
 /* ════════════════════════════════════════════════════
+   ICON GENERATOR
+   Genera iconos PWA como data URLs via Canvas si los
+   archivos PNG no están disponibles (útil en dev/Pages)
+   ════════════════════════════════════════════════════ */
+function generateIconDataURL(size) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const r = size * 0.18;
+  // Background rounded rect
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(size - r, 0);
+  ctx.quadraticCurveTo(size, 0, size, r);
+  ctx.lineTo(size, size - r);
+  ctx.quadraticCurveTo(size, size, size - r, size);
+  ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size - r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fillStyle = '#fd358a';
+  ctx.fill();
+  // Checkmark
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth   = size * 0.1;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  ctx.moveTo(size * 0.22, size * 0.52);
+  ctx.lineTo(size * 0.44, size * 0.72);
+  ctx.lineTo(size * 0.78, size * 0.32);
+  ctx.stroke();
+  return canvas.toDataURL('image/png');
+}
+
+function ensureIcons() {
+  // Patch manifest icons with canvas-generated data URLs if no server
+  const icon192 = generateIconDataURL(192);
+  const icon512 = generateIconDataURL(512);
+  // Update apple-touch-icon dynamically
+  const atIcon = document.querySelector('link[rel="apple-touch-icon"]');
+  if (atIcon) atIcon.href = icon192;
+  // Store for SW (SW won't use these but the browser install prompt will)
+  window._iconDataURL = icon192;
+}
+
+/* ════════════════════════════════════════════════════
    INIT
    ════════════════════════════════════════════════════ */
 maybeSeed();
+ensureIcons();
 initHeader();
 renderToday();
 scheduleReminders();
 
-// Register service worker
+// Register service worker with relative path (works on GitHub Pages subdirs)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(err => {
+    console.warn('SW registration failed:', err);
+  });
 }
 </script>
 </body>

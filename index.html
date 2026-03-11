@@ -986,6 +986,15 @@ const REMINDERS = [
   "{name}: ¡todavía estás a tiempo de hacerlo hoy! ⏰"
 ];
 
+/* ── Constantes de calendario (declaradas aquí arriba
+   para que estén disponibles en TODAS las funciones) ── */
+const MONTHS_ES   = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS_ES     = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const DAYS_FULL   = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MONTHS_FULL = ['enero','febrero','marzo','abril','mayo','junio',
+                     'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
 function getHabits()   { return JSON.parse(localStorage.getItem('raices_habits') || '[]'); }
 function saveHabits(h) { localStorage.setItem('raices_habits', JSON.stringify(h)); }
 function getLogs()     { return JSON.parse(localStorage.getItem('raices_logs')   || '{}'); }
@@ -1351,13 +1360,6 @@ function changeMonth(delta) {
   if (det) det.style.display = 'none';
   buildCalendar();
 }
-
-const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const DAYS_ES   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-const DAYS_FULL = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-const MONTHS_FULL = ['enero','febrero','marzo','abril','mayo','junio',
-                     'julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
 function buildCalendar() {
   // ── Etiqueta del mes ──────────────────────────────

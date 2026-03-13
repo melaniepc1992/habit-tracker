@@ -169,6 +169,12 @@
       background: #fff3e0; border-radius: 20px;
       padding: 2px 7px; font-size: .7rem; color: var(--orange); font-weight: 700;
     }
+    .freq-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      border-radius: 20px; padding: 2px 7px;
+      font-size: .68rem; font-weight: 700; margin-left: 4px;
+      background: var(--teal-light); color: var(--teal);
+    }
     .habit-measure { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
     .measure-btn {
       width: 26px; height: 26px; border-radius: 50%;
@@ -494,6 +500,8 @@
     <div id="todayPending"></div>
     <div class="section-label" id="doneLabel" style="display:none">Completados ✓</div>
     <div id="todayDone"></div>
+    <div class="section-label" id="restLabel" style="display:none">No programados hoy</div>
+    <div id="todayRest"></div>
   </section>
 
   <!-- HÁBITOS -->
@@ -642,6 +650,17 @@
       <input class="form-input" id="hCustomUnit" placeholder="Ej: series, vueltas…"/>
     </div>
     <div class="form-group">
+      <label class="form-label">Frecuencia</label>
+      <select class="form-select" id="hFreq">
+        <option value="daily">📅 Todos los días</option>
+        <option value="every2">📅 Cada 2 días</option>
+        <option value="every3">📅 Cada 3 días</option>
+        <option value="weekly">📆 1 vez por semana</option>
+        <option value="biweekly">📆 2 veces por semana</option>
+        <option value="monthly">🗓 1 vez por mes</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label class="form-label">Ícono</label>
       <div class="emoji-picker" id="emojiPicker"></div>
     </div>
@@ -720,6 +739,16 @@ const REMINDERS = [
   '{name}: ¡todavía estás a tiempo de hacerlo! ⏰'
 ];
 
+// Etiquetas de frecuencia para badges y descripciones
+const FREQ_LABELS = {
+  daily:    { short: 'diario',        icon: '📅' },
+  every2:   { short: 'cada 2 días',   icon: '📅' },
+  every3:   { short: 'cada 3 días',   icon: '📅' },
+  weekly:   { short: 'semanal',       icon: '📆' },
+  biweekly: { short: '2×semana',      icon: '📆' },
+  monthly:  { short: 'mensual',       icon: '🗓'  }
+};
+
 /* ══════════════════════════════════════════════════
    STORAGE
 ══════════════════════════════════════════════════ */
@@ -733,6 +762,52 @@ function todayKey() {
   return d.getFullYear() + '-' +
          String(d.getMonth() + 1).padStart(2,'0') + '-' +
          String(d.getDate()).padStart(2,'0');
+}
+
+/* ── Frecuencia ────────────────────────────────────────
+   Dado un hábito y una fecha (objeto Date), devuelve true
+   si el hábito "corresponde" a ese día según su frecuencia.
+
+   Lógica por frecuencia:
+   · daily    → siempre
+   · every2   → días pares del año (0, 2, 4…)
+   · every3   → días múltiplos de 3 del año
+   · weekly   → solo el día de la semana del día en que fue creado
+   · biweekly → el día de creación + 3 días después en la semana (cíclico)
+   · monthly  → solo el día-del-mes en que fue creado
+─────────────────────────────────────────────────────── */
+function isDueOnDate(habit, dateObj) {
+  var freq = habit.freq || 'daily';
+  if (freq === 'daily') return true;
+
+  // Día del año (0-365)
+  var jan1 = new Date(dateObj.getFullYear(), 0, 1);
+  var doy  = Math.floor((dateObj - jan1) / 86400000);
+
+  if (freq === 'every2') return (doy % 2 === 0);
+  if (freq === 'every3') return (doy % 3 === 0);
+
+  // Para weekly / biweekly / monthly necesitamos el día de creación
+  var createdDate = habit.created ? new Date(habit.created + 'T12:00:00') : new Date(dateObj);
+  var createdDow  = createdDate.getDay();   // 0=dom…6=sáb
+  var createdDom  = createdDate.getDate();  // 1-31
+
+  if (freq === 'weekly')   return (dateObj.getDay() === createdDow);
+  if (freq === 'biweekly') {
+    var dow2 = (createdDow + 3) % 7;       // tercer día de diferencia
+    return (dateObj.getDay() === createdDow || dateObj.getDay() === dow2);
+  }
+  if (freq === 'monthly') {
+    // Meses más cortos: si la fecha de creación es 31 y el mes tiene 30, usar el último día
+    var lastDom = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
+    var target  = Math.min(createdDom, lastDom);
+    return (dateObj.getDate() === target);
+  }
+  return true; // fallback
+}
+
+function isDueToday(habit) {
+  return isDueOnDate(habit, new Date());
 }
 
 /* ══════════════════════════════════════════════════
@@ -793,8 +868,13 @@ function renderToday() {
   var logs    = getLogs();
   var today   = todayKey();
   var dayLog  = logs[today] || {};
-  var pending = habits.filter(function(h){ return !isDone(h, dayLog); });
-  var done    = habits.filter(function(h){ return  isDone(h, dayLog); });
+
+  // Separar hábitos según si corresponden hoy
+  var dueHabits  = habits.filter(function(h){ return  isDueToday(h); });
+  var restHabits = habits.filter(function(h){ return !isDueToday(h); });
+
+  var pending = dueHabits.filter(function(h){ return !isDone(h, dayLog); });
+  var done    = dueHabits.filter(function(h){ return  isDone(h, dayLog); });
 
   var pendingEl = document.getElementById('todayPending');
   var doneEl    = document.getElementById('todayDone');
@@ -803,16 +883,53 @@ function renderToday() {
 
   if (!habits.length) {
     pendingEl.innerHTML = '<div class="empty-state"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2"/><path d="M20 32h24M32 20v24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><p>Agregá tu primer hábito<br>con el botón +</p></div>';
+  } else if (!dueHabits.length) {
+    pendingEl.innerHTML = '<div class="empty-state" style="padding:20px"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2"/><path d="M32 20v12l8 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><p>No hay hábitos programados<br>para hoy 🎉</p></div>';
   }
 
   pending.forEach(function(h){ pendingEl.appendChild(buildTodayCard(h, dayLog)); });
   done.forEach(function(h){    doneEl.appendChild(buildTodayCard(h, dayLog)); });
   document.getElementById('doneLabel').style.display = done.length ? 'block' : 'none';
 
-  // Ring
-  var total = habits.length;
+  // Hábitos que no tocan hoy — sección colapsada
+  var restLabel = document.getElementById('restLabel');
+  var restEl    = document.getElementById('todayRest');
+  if (restHabits.length) {
+    restLabel.style.display = 'block';
+    restEl.innerHTML = '';
+    restHabits.forEach(function(h){
+      var row = document.createElement('div');
+      row.className = 'card';
+      row.style.opacity = '.45';
+      var inner = document.createElement('div');
+      inner.style.cssText = 'display:flex;align-items:center;gap:10px';
+      var icon = document.createElement('div');
+      icon.className = 'habit-icon';
+      icon.style.cssText = 'background:' + h.color + '22;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0';
+      icon.textContent = h.emoji || '⭐';
+      var info = document.createElement('div');
+      info.style.flex = '1';
+      var nm = document.createElement('div');
+      nm.style.cssText = 'font-family:Georgia,serif;font-size:.88rem';
+      nm.textContent = h.name;
+      var fl = document.createElement('span');
+      var fl2 = FREQ_LABELS[h.freq || 'daily'];
+      fl.className = 'freq-badge';
+      fl.textContent = fl2.icon + ' ' + fl2.short;
+      info.appendChild(nm); info.appendChild(fl);
+      inner.appendChild(icon); inner.appendChild(info);
+      row.appendChild(inner);
+      restEl.appendChild(row);
+    });
+  } else {
+    restLabel.style.display = 'none';
+    restEl.innerHTML = '';
+  }
+
+  // Ring — solo cuenta hábitos de hoy
+  var total = dueHabits.length;
   var pct   = total ? Math.round(done.length / total * 100) : 0;
-  var circ  = 2 * Math.PI * 26; // r=26 → ≈163.4
+  var circ  = 2 * Math.PI * 26;
   document.getElementById('progressRing').style.strokeDashoffset = circ - (circ * pct / 100);
   document.getElementById('progressRing').style.strokeDasharray  = circ;
   document.getElementById('progressPct').textContent   = pct + '%';
@@ -861,6 +978,16 @@ function buildTodayCard(habit, dayLog) {
     badge.className = 'streak-badge';
     badge.textContent = '🔥 ' + streak + ' días';
     info.appendChild(badge);
+  }
+
+  // Badge de frecuencia (solo si no es diario)
+  var freq = habit.freq || 'daily';
+  if (freq !== 'daily') {
+    var fl = FREQ_LABELS[freq];
+    var fb = document.createElement('span');
+    fb.className = 'freq-badge';
+    fb.textContent = fl.icon + ' ' + fl.short;
+    info.appendChild(fb);
   }
 
   if (!isCheck) {
@@ -982,7 +1109,9 @@ function renderHabits() {
     var nm = document.createElement('div');
     nm.className = 'habit-name'; nm.textContent = h.name;
     var ds = document.createElement('div');
-    ds.className = 'habit-desc'; ds.textContent = h.desc || getUnit(h);
+    ds.className = 'habit-desc';
+    var freqInfo = FREQ_LABELS[h.freq || 'daily'];
+    ds.textContent = (h.desc || getUnit(h)) + '  ' + freqInfo.icon + ' ' + freqInfo.short;
     info.appendChild(nm); info.appendChild(ds);
 
     var editBtn = document.createElement('button');
@@ -1011,6 +1140,7 @@ function openAddHabit() {
   document.getElementById('hType').value = 'check';
   document.getElementById('hGoal').value = '';
   document.getElementById('hCustomUnit').value = '';
+  document.getElementById('hFreq').value = 'daily';
   document.getElementById('deleteBtn').style.display = 'none';
   buildEmojiPicker(); buildColorPicker(); onTypeChange();
   document.getElementById('habitModal').classList.add('open');
@@ -1026,6 +1156,7 @@ function openEditHabit(id) {
   document.getElementById('hType').value = h.type;
   document.getElementById('hGoal').value = h.goal || '';
   document.getElementById('hCustomUnit').value = h.customUnit || '';
+  document.getElementById('hFreq').value = h.freq || 'daily';
   document.getElementById('deleteBtn').style.display = 'block';
   buildEmojiPicker(); buildColorPicker(); onTypeChange();
   document.getElementById('habitModal').classList.add('open');
@@ -1083,12 +1214,16 @@ function saveHabit() {
     type:       document.getElementById('hType').value,
     goal:       parseInt(document.getElementById('hGoal').value) || 1,
     customUnit: document.getElementById('hCustomUnit').value.trim(),
+    freq:       document.getElementById('hFreq').value || 'daily',
     emoji:      selEmoji,
     color:      selColor,
     created:    todayKey()
   };
   var habits = getHabits();
   if (editingId) {
+    // Preservar el campo created original para que weekly/monthly no cambien de día
+    var orig = habits.find(function(h){ return h.id === editingId; });
+    if (orig) habit.created = orig.created;
     habits = habits.map(function(h){ return h.id === editingId ? Object.assign({}, h, habit) : h; });
   } else {
     habits.push(habit);
@@ -1202,10 +1337,11 @@ function buildCalendar() {
     numSpan.textContent = String(day);
     cell.appendChild(numSpan);
 
-    // Hábitos relevantes según filtro
+    // Hábitos relevantes según filtro Y que corresponden a ese día
+    var dateObj  = new Date(y, m, day);
     var relevant = filter
-      ? habits.filter(function(h){ return h.id === filter; })
-      : habits;
+      ? habits.filter(function(h){ return h.id === filter && isDueOnDate(h, dateObj); })
+      : habits.filter(function(h){ return isDueOnDate(h, dateObj); });
 
     var donHabits = relevant.filter(function(h){ return isDone(h, dayLog); });
 
@@ -1272,7 +1408,18 @@ function showDayDetail(key, dayLog, day) {
     return;
   }
 
-  habits.forEach(function(h) {
+  var dateObj = new Date(calState.year, calState.month, day);
+  var dueHere = habits.filter(function(h){ return isDueOnDate(h, dateObj); });
+  var notDue  = habits.filter(function(h){ return !isDueOnDate(h, dateObj); });
+
+  if (!dueHere.length) {
+    var nd = document.createElement('div');
+    nd.style.cssText = 'opacity:.5;font-size:.82rem';
+    nd.textContent = 'Ningún hábito programado para este día.';
+    detail.appendChild(nd);
+  }
+
+  dueHere.forEach(function(h) {
     var done = isDone(h, dayLog);
     var row  = document.createElement('div');
     row.className = 'day-detail-row';
@@ -1283,6 +1430,22 @@ function showDayDetail(key, dayLog, day) {
     row.appendChild(em); row.appendChild(nm);
     detail.appendChild(row);
   });
+
+  if (notDue.length) {
+    var sep = document.createElement('div');
+    sep.style.cssText = 'font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--subtle);margin:8px 0 4px;opacity:.5';
+    sep.textContent = 'No programados este día';
+    detail.appendChild(sep);
+    notDue.forEach(function(h) {
+      var row = document.createElement('div');
+      row.className = 'day-detail-row';
+      row.style.cssText = 'color:var(--subtle);opacity:.35';
+      var em = document.createElement('span'); em.textContent = h.emoji || '⭐';
+      var nm = document.createElement('span'); nm.textContent = h.name;
+      row.appendChild(em); row.appendChild(nm);
+      detail.appendChild(row);
+    });
+  }
 }
 
 /* ══════════════════════════════════════════════════
@@ -1598,10 +1761,12 @@ function validateBackup(data) {
     if (typeof h.id   !== 'string' || h.id.length > 40)   return { ok:false, error:'ID inválido.' };
     if (typeof h.name !== 'string' || !h.name.length)     return { ok:false, error:'Nombre vacío.' };
     if (!ALLOWED_TYPES[h.type])                            return { ok:false, error:'Tipo desconocido: ' + h.type };
+    const ALLOWED_FREQS = { daily:1, every2:1, every3:1, weekly:1, biweekly:1, monthly:1 };
     cleanH.push({
       id: h.id, name: sStr(h.name), desc: sStr(h.desc||''),
       type: h.type, goal: Number(h.goal)||1,
       customUnit: sStr(h.customUnit||'').slice(0,20),
+      freq: ALLOWED_FREQS[h.freq] ? h.freq : 'daily',
       emoji: sStr(h.emoji||'⭐').slice(0,8),
       color: /^#[0-9a-fA-F]{6}$/.test(h.color||'') ? h.color : '#fd358a',
       created: sStr(h.created||'')
@@ -1709,28 +1874,31 @@ function scheduleReminders() {
     Notification.requestPermission();
   }
   setTimeout(function() {
-    var habits = getHabits();
+    var habits  = getHabits().filter(function(h){ return isDueToday(h); });
     if (!habits.length) return;
-    var logs   = getLogs();
-    var dayLog = logs[todayKey()] || {};
+    var logs    = getLogs();
+    var dayLog  = logs[todayKey()] || {};
     var pending = habits.filter(function(h){ return !isDone(h, dayLog); });
     if (pending.length) {
       showToast('Recordatorio 🔔',
-        'Tenés ' + pending.length + ' hábito' + (pending.length > 1 ? 's' : '') + ' pendiente' + (pending.length > 1 ? 's' : '') + ' hoy.');
-    } else if (habits.length) {
+        'Tenés ' + pending.length + ' hábito' + (pending.length > 1 ? 's' : '') +
+        ' pendiente' + (pending.length > 1 ? 's' : '') + ' hoy.');
+    } else {
       var p = PROVERBS[SUPPORT_IDX[Math.floor(Math.random() * SUPPORT_IDX.length)]];
       showProverbToast(p);
     }
   }, 1400);
+
   setInterval(function() {
-    var habits = getHabits();
-    var logs   = getLogs();
-    var dayLog = logs[todayKey()] || {};
+    var habits  = getHabits().filter(function(h){ return isDueToday(h); });
+    var logs    = getLogs();
+    var dayLog  = logs[todayKey()] || {};
     var pending = habits.filter(function(h){ return !isDone(h, dayLog); });
     if (!pending.length) return;
     var h   = pending[Math.floor(Math.random() * pending.length)];
+    var fl  = FREQ_LABELS[h.freq || 'daily'];
     var msg = REMINDERS[Math.floor(Math.random() * REMINDERS.length)].replace('{name}', h.name);
-    if (Notification.permission === 'granted') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       new Notification('Habit Tracker', { body: msg, icon: './icon-192.png' });
     }
     showToast('Recordatorio 🔔', msg);

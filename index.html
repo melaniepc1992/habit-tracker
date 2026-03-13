@@ -273,6 +273,59 @@
     .day-detail h4 { font-family: Georgia, serif; color: var(--ink); margin-bottom: 8px; }
     .day-detail-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 
+    /* Calendar cells — edit hint */
+    .cal-day:not(.empty):hover::before {
+      content: '✏'; position: absolute; top: 2px; right: 3px;
+      font-size: .55rem; opacity: .35; line-height: 1;
+    }
+
+    /* Day-edit modal rows */
+    .day-edit-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid var(--sand);
+    }
+    .day-edit-row:last-child { border-bottom: none; }
+    .day-edit-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .day-edit-info { flex: 1; min-width: 0; }
+    .day-edit-name { font-family: Georgia, serif; font-size: .9rem; margin-bottom: 1px; }
+    .day-edit-meta { font-size: .72rem; color: var(--subtle); }
+    /* Toggle pill for check-type */
+    .toggle-pill {
+      width: 46px; height: 26px; border-radius: 13px;
+      border: none; cursor: pointer; position: relative;
+      flex-shrink: 0; transition: background var(--trans);
+    }
+    .toggle-pill::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: white; transition: transform var(--trans);
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    .toggle-pill.on { background: var(--green); }
+    .toggle-pill.on::after { transform: translateX(20px); }
+    .toggle-pill.off { background: var(--sand); }
+    /* Stepper for numeric types */
+    .day-edit-stepper {
+      display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+    }
+    .step-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1.5px solid var(--sand); background: none;
+      font-size: 1rem; cursor: pointer; color: var(--mid);
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--trans);
+    }
+    .step-btn:hover { background: var(--pink-light); border-color: var(--pink); color: var(--pink); }
+    .step-val {
+      min-width: 52px; text-align: center;
+      font-size: .82rem; font-weight: 700; color: var(--ink);
+    }
+
     /* STATS */
     .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
     .stat-card {
@@ -599,6 +652,18 @@
     <button class="btn btn-primary" onclick="saveHabit()">Guardar hábito</button>
     <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
     <button class="btn btn-danger" id="deleteBtn" style="display:none" onclick="deleteHabit()">Eliminar hábito</button>
+  </div>
+</div>
+
+<!-- MODAL EDITAR DÍA -->
+<div class="modal-overlay" id="dayEditModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title" id="dayEditTitle">Editar día</h2>
+    <p id="dayEditSub" style="font-size:.78rem;color:var(--subtle);margin:-12px 0 18px"></p>
+    <div id="dayEditList"></div>
+    <button class="btn btn-primary" style="margin-top:8px" onclick="saveDayEdit()">Guardar cambios</button>
+    <button class="btn btn-secondary" onclick="closeDayEdit()">Cancelar</button>
   </div>
 </div>
 
@@ -1172,23 +1237,36 @@ function buildCalendar() {
 }
 
 function showDayDetail(key, dayLog, day) {
+  // Mostrar resumen inline (igual que antes) Y ofrecer botón de edición
   var detail = document.getElementById('dayDetail');
   var habits = getHabits();
   detail.style.display = 'block';
   detail.innerHTML = '';
 
-  // Fecha sin toLocaleDateString
   var dow     = new Date(calState.year, calState.month, day).getDay();
   var dateStr = DAYS_LONG[dow].charAt(0).toUpperCase() + DAYS_LONG[dow].slice(1) +
                 ' ' + day + ' de ' + MONTHS_LONG[calState.month] + ' ' + calState.year;
 
+  // Cabecera con título + botón editar
+  var header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+
   var title = document.createElement('h4');
   title.textContent = dateStr;
-  detail.appendChild(title);
+  header.appendChild(title);
+
+  var editBtn = document.createElement('button');
+  editBtn.style.cssText = 'background:var(--pink);color:white;border:none;border-radius:8px;padding:5px 12px;font-size:.75rem;font-weight:700;cursor:pointer;flex-shrink:0';
+  editBtn.textContent = '✏ Editar';
+  editBtn.onclick = (function(k, dl) {
+    return function() { openDayEdit(k, dl, dateStr); };
+  }(key, dayLog));
+  header.appendChild(editBtn);
+  detail.appendChild(header);
 
   if (!habits.length) {
     var emp = document.createElement('div');
-    emp.style.opacity = '.5'; emp.style.fontSize = '.82rem';
+    emp.style.cssText = 'opacity:.5;font-size:.82rem';
     emp.textContent = 'Sin hábitos registrados.';
     detail.appendChild(emp);
     return;
@@ -1200,13 +1278,155 @@ function showDayDetail(key, dayLog, day) {
     row.className = 'day-detail-row';
     row.style.color = done ? 'var(--green)' : 'var(--subtle)';
     if (!done) row.style.opacity = '.6';
-
     var em = document.createElement('span'); em.textContent = h.emoji || '⭐';
     var nm = document.createElement('span'); nm.textContent = h.name + (done ? ' ✓' : '');
     row.appendChild(em); row.appendChild(nm);
     detail.appendChild(row);
   });
 }
+
+/* ══════════════════════════════════════════════════
+   EDICIÓN DE DÍA PASADO
+══════════════════════════════════════════════════ */
+var dayEditKey   = null;   // clave YYYY-MM-DD del día en edición
+var dayEditDraft = {};     // copia mutable del log mientras se edita
+
+function openDayEdit(key, currentLog, dateStr) {
+  dayEditKey   = key;
+  // Clonar el log del día para editar sin modificar el original
+  dayEditDraft = JSON.parse(JSON.stringify(currentLog || {}));
+
+  var habits = getHabits();
+  document.getElementById('dayEditTitle').textContent = '✏ Editar registro';
+  document.getElementById('dayEditSub').textContent   = dateStr;
+
+  var list = document.getElementById('dayEditList');
+  list.innerHTML = '';
+
+  if (!habits.length) {
+    list.innerHTML = '<p style="color:var(--subtle);font-size:.83rem">No tenés hábitos creados.</p>';
+  } else {
+    habits.forEach(function(h) { list.appendChild(buildDayEditRow(h)); });
+  }
+
+  document.getElementById('dayEditModal').classList.add('open');
+}
+
+function buildDayEditRow(habit) {
+  var log   = dayEditDraft[habit.id] || {};
+  var unit  = getUnit(habit);
+  var isChk = habit.type === 'check';
+  var value = isChk ? (!!log.done) : (log.value || 0);
+  var goal  = habit.goal || 1;
+
+  var row = document.createElement('div');
+  row.className = 'day-edit-row';
+
+  // Ícono
+  var icon = document.createElement('div');
+  icon.className = 'day-edit-icon';
+  icon.style.background = habit.color + '22';
+  icon.textContent = habit.emoji || '⭐';
+
+  // Info
+  var info = document.createElement('div');
+  info.className = 'day-edit-info';
+  var nm = document.createElement('div'); nm.className = 'day-edit-name'; nm.textContent = habit.name;
+  var mt = document.createElement('div'); mt.className = 'day-edit-meta';
+  mt.textContent = isChk ? (value ? 'Completado' : 'Sin registrar') : (value + ' / ' + goal + ' ' + unit);
+  info.appendChild(nm); info.appendChild(mt);
+
+  row.appendChild(icon);
+  row.appendChild(info);
+
+  if (isChk) {
+    // Toggle pill
+    var pill = document.createElement('button');
+    pill.className = 'toggle-pill ' + (value ? 'on' : 'off');
+    pill.onclick = (function(hid, metaEl, pillEl) {
+      return function() {
+        var cur = !!(dayEditDraft[hid] && dayEditDraft[hid].done);
+        var next = !cur;
+        if (!dayEditDraft[hid]) dayEditDraft[hid] = {};
+        dayEditDraft[hid].done = next;
+        pillEl.className = 'toggle-pill ' + (next ? 'on' : 'off');
+        metaEl.textContent = next ? 'Completado' : 'Sin registrar';
+      };
+    }(habit.id, mt, pill));
+    row.appendChild(pill);
+  } else {
+    // Stepper numérico
+    var stepper = document.createElement('div');
+    stepper.className = 'day-edit-stepper';
+
+    var minus = document.createElement('button');
+    minus.className = 'step-btn'; minus.textContent = '−';
+
+    var valSpan = document.createElement('span');
+    valSpan.className = 'step-val';
+    valSpan.textContent = value + ' ' + unit;
+
+    var plus = document.createElement('button');
+    plus.className = 'step-btn'; plus.textContent = '+';
+
+    minus.onclick = (function(hid, sp, metaEl) {
+      return function() {
+        var cur = (dayEditDraft[hid] && dayEditDraft[hid].value) || 0;
+        var next = Math.max(0, cur - 1);
+        dayEditDraft[hid] = { value: next };
+        sp.textContent = next + ' ' + getUnit(getHabits().find(function(x){ return x.id===hid; })||{type:'check'});
+        metaEl.textContent = next + ' / ' + goal + ' ' + unit;
+      };
+    }(habit.id, valSpan, mt));
+
+    plus.onclick = (function(hid, sp, metaEl) {
+      return function() {
+        var h2   = getHabits().find(function(x){ return x.id===hid; }) || {};
+        var cur  = (dayEditDraft[hid] && dayEditDraft[hid].value) || 0;
+        var next = cur + 1;
+        dayEditDraft[hid] = { value: next };
+        sp.textContent = next + ' ' + getUnit(h2);
+        metaEl.textContent = next + ' / ' + (h2.goal||1) + ' ' + getUnit(h2);
+      };
+    }(habit.id, valSpan, mt));
+
+    stepper.appendChild(minus);
+    stepper.appendChild(valSpan);
+    stepper.appendChild(plus);
+    row.appendChild(stepper);
+  }
+
+  return row;
+}
+
+function saveDayEdit() {
+  if (!dayEditKey) return;
+  var savedKey  = dayEditKey;          // guardar antes de que closeDayEdit lo limpie
+  var savedDraft = dayEditDraft;
+  var logs = getLogs();
+  logs[savedKey] = savedDraft;
+  saveLogs(logs);
+  closeDayEdit();
+  // Refrescar calendario y stats
+  buildCalendar();
+  updateStats();
+  if (savedKey === todayKey()) renderToday();
+  // Reabrir el detalle del día con los datos nuevos
+  var parts  = savedKey.split('-');
+  var day    = parseInt(parts[2], 10);
+  var newLog = logs[savedKey] || {};
+  showDayDetail(savedKey, newLog, day);
+  showToast('Registro guardado ✓', savedKey);
+}
+
+function closeDayEdit() {
+  document.getElementById('dayEditModal').classList.remove('open');
+  dayEditKey = null; dayEditDraft = {};
+}
+
+document.getElementById('dayEditModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDayEdit();
+});
 
 function buildChips() {
   var habits    = getHabits();
